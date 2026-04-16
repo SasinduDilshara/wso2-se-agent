@@ -144,12 +144,22 @@ func downloadSkillsRepo(pcfg *configpkg.ProductConfig) (string, error) {
 	}
 
 	tarballPath := filepath.Join(cacheDir, cacheKey+".tar.gz")
-	cmd := exec.Command("gh", "api",
-		fmt.Sprintf("repos/%s/tarball/%s", repo, branch),
-		"--output", tarballPath)
-	output, err := cmd.CombinedOutput()
+
+	// Use shell redirection since older gh versions don't support --output
+	tarballFile, err := os.Create(tarballPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to download skills repo: %w\n%s", err, string(output))
+		return "", fmt.Errorf("failed to create tarball file: %w", err)
+	}
+
+	cmd := exec.Command("gh", "api",
+		fmt.Sprintf("repos/%s/tarball/%s", repo, branch))
+	cmd.Stdout = tarballFile
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	tarballFile.Close()
+	if err != nil {
+		os.Remove(tarballPath)
+		return "", fmt.Errorf("failed to download skills repo: %w", err)
 	}
 
 	// Extract tarball

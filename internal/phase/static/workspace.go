@@ -88,15 +88,9 @@ func (p *WorkspacePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, e
 		})
 	}
 
-	// Copy product pack zip if configured
-	packSource := ctx.ProductConfig.Build.PackSource
+	// Copy product pack zip
+	packSource := ctx.PackPath
 	if packSource != "" {
-		// Expand ~
-		if len(packSource) > 0 && packSource[0] == '~' {
-			home, _ := os.UserHomeDir()
-			packSource = filepath.Join(home, packSource[1:])
-		}
-
 		if _, err := os.Stat(packSource); err != nil {
 			result.Status = state.StatusFailed
 			result.Error = fmt.Sprintf("product pack not found at %s", packSource)

@@ -34,6 +34,7 @@ type PhaseContext struct {
 	AutoApprove   bool
 	MaxBudgetUSD  float64
 	RiskThreshold int
+	PackPath      string
 	Printer       *ui.Printer
 	RunTimestamp  string
 	Verbose       bool
@@ -48,6 +49,7 @@ func NewPhaseContext(
 	autoApprove bool,
 	maxBudget float64,
 	riskThreshold int,
+	packPath string,
 	verbose bool,
 ) *PhaseContext {
 	return &PhaseContext{
@@ -61,6 +63,7 @@ func NewPhaseContext(
 		AutoApprove:   autoApprove,
 		MaxBudgetUSD:  maxBudget,
 		RiskThreshold: riskThreshold,
+		PackPath:      packPath,
 		Printer:       ui.NewPrinter(verbose),
 		RunTimestamp:  time.Now().Format("20060102-150405"),
 		Verbose:       verbose,

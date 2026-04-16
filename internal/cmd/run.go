@@ -30,6 +30,7 @@ var (
 	dryRun        bool
 	riskThreshold int
 	maxBudgetUSD  float64
+	packPath      string
 )
 
 var runCmd = &cobra.Command{
@@ -53,10 +54,12 @@ func init() {
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show the plan without executing")
 	runCmd.Flags().IntVar(&riskThreshold, "risk-threshold", -1, "Risk score threshold (0-10, default from config)")
 	runCmd.Flags().Float64Var(&maxBudgetUSD, "max-budget-usd", 0, "Max budget per phase in USD")
+	runCmd.Flags().StringVar(&packPath, "pack", "", "Path to product pack zip file")
 
 	runCmd.MarkFlagRequired("product")
 	runCmd.MarkFlagRequired("version")
 	runCmd.MarkFlagRequired("issue")
+	runCmd.MarkFlagRequired("pack")
 }
 
 func runPipeline(cmd *cobra.Command, args []string) error {
@@ -142,7 +145,7 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 	ctx := phase.NewPhaseContext(
 		wsPath, issueURL, iss.Number,
 		productCfg, globalCfg, repoReg, ws,
-		yes, budget, threshold, verbose,
+		yes, budget, threshold, packPath, verbose,
 	)
 
 	// Collect phase names for display

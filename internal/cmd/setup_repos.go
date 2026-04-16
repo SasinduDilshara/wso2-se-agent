@@ -84,7 +84,49 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 			upstream = "wso2/" + repo.Name
 		}
 
-		// Step 1: Find the user's fork via GitHub API
+		// Step 1: Ask if they have an existing local clone
+		fmt.Print("  Do you have an existing local clone? [y/N] ")
+		text, _ := reader.ReadString('\n')
+
+		if strings.TrimSpace(strings.ToLower(text)) == "y" {
+			localPath := askForPath(reader, repo.Name)
+			if localPath == "" {
+				fmt.Println("  Skipped.\n")
+				continue
+			}
+
+			// Detect fork name from origin remote
+			forkFullName := ""
+			if originURL, err := gitutil.GetRemoteURL(localPath, "origin"); err == nil {
+				forkFullName = extractOrgRepo(originURL)
+			}
+
+			// Add upstream if missing
+			if !gitutil.HasRemote(localPath, "upstream") {
+				upstreamURL := fmt.Sprintf("https://github.com/%s.git", upstream)
+				fmt.Printf("  No upstream remote. Adding: %s\n", upstreamURL)
+				if err := gitutil.AddRemote(localPath, "upstream", upstreamURL); err != nil {
+					fmt.Printf("  Warning: failed to add upstream: %v\n", err)
+				}
+			}
+
+			if gitutil.HasRemote(localPath, "origin") {
+				fmt.Println("  origin remote: OK")
+			}
+			if gitutil.HasRemote(localPath, "upstream") {
+				fmt.Println("  upstream remote: OK")
+			}
+
+			reg.Repos[repo.Name] = config.RepoEntry{
+				LocalPath: localPath,
+				Fork:      forkFullName,
+				Upstream:  upstream,
+			}
+			fmt.Printf("  Registered: %s -> %s\n\n", repo.Name, localPath)
+			continue
+		}
+
+		// Step 2: No existing clone — find fork via GitHub API
 		fmt.Printf("  Looking for your fork of %s...\n", upstream)
 		forkFullName, err := findUserFork(upstream, globalCfg.GitHubUsername)
 
@@ -94,16 +136,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 			fmt.Print("  Fork it now? [Y/n] ")
 			text, _ := reader.ReadString('\n')
 			if strings.TrimSpace(strings.ToLower(text)) == "n" {
-				// Fall back to manual path entry
-				localPath := askForPath(reader, repo.Name)
-				if localPath != "" {
-					reg.Repos[repo.Name] = config.RepoEntry{
-						LocalPath: localPath,
-						Fork:      "",
-						Upstream:  upstream,
-					}
-					fmt.Printf("  Registered: %s -> %s\n\n", repo.Name, localPath)
-				}
+				fmt.Println("  Skipped.\n")
 				continue
 			}
 
@@ -119,54 +152,35 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  Found fork: %s\n", forkFullName)
 		}
 
-		// Step 2: Ask to auto-clone or provide existing path
-		fmt.Print("  Auto-clone to local machine? (choose 'n' to provide an existing clone path) [Y/n] ")
-		text, _ := reader.ReadString('\n')
+		// Step 3: Clone the fork
+		forkRepoName := forkFullName[strings.Index(forkFullName, "/")+1:]
+		localPath := filepath.Join(reposDir, forkRepoName)
 
-		var localPath string
-
-		if strings.TrimSpace(strings.ToLower(text)) == "n" {
-			// Manual path
-			localPath = askForPath(reader, repo.Name)
-			if localPath == "" {
-				fmt.Println("  Skipped.\n")
+		if _, err := os.Stat(localPath); err == nil {
+			fmt.Printf("  Clone already exists at %s\n", localPath)
+		} else {
+			fmt.Printf("  Cloning %s to %s...\n", forkFullName, localPath)
+			if err := cloneRepo(forkFullName, localPath); err != nil {
+				fmt.Printf("  Failed to clone: %v\n", err)
+				fmt.Println("  Skipping this repo.\n")
 				continue
 			}
-		} else {
-			// Auto-clone
-			forkRepoName := forkFullName[strings.Index(forkFullName, "/")+1:]
-			localPath = filepath.Join(reposDir, forkRepoName)
-
-			if _, err := os.Stat(localPath); err == nil {
-				fmt.Printf("  Clone already exists at %s\n", localPath)
-			} else {
-				fmt.Printf("  Cloning %s to %s...\n", forkFullName, localPath)
-				if err := cloneRepo(forkFullName, localPath); err != nil {
-					fmt.Printf("  Failed to clone: %v\n", err)
-					fmt.Println("  Skipping this repo.\n")
-					continue
-				}
-				fmt.Println("  Cloned successfully.")
-			}
-
-			// Add upstream remote if not present
-			if !gitutil.HasRemote(localPath, "upstream") {
-				upstreamURL := fmt.Sprintf("https://github.com/%s.git", upstream)
-				fmt.Printf("  Adding upstream remote: %s\n", upstreamURL)
-				if err := gitutil.AddRemote(localPath, "upstream", upstreamURL); err != nil {
-					fmt.Printf("  Warning: failed to add upstream: %v\n", err)
-				}
-			} else {
-				fmt.Println("  upstream remote: OK")
-			}
+			fmt.Println("  Cloned successfully.")
 		}
 
-		// Validate remotes on the final path
+		// Add upstream remote if not present
+		if !gitutil.HasRemote(localPath, "upstream") {
+			upstreamURL := fmt.Sprintf("https://github.com/%s.git", upstream)
+			fmt.Printf("  Adding upstream remote: %s\n", upstreamURL)
+			if err := gitutil.AddRemote(localPath, "upstream", upstreamURL); err != nil {
+				fmt.Printf("  Warning: failed to add upstream: %v\n", err)
+			}
+		} else {
+			fmt.Println("  upstream remote: OK")
+		}
+
 		if gitutil.HasRemote(localPath, "origin") {
 			fmt.Println("  origin remote: OK")
-		}
-		if gitutil.HasRemote(localPath, "upstream") {
-			fmt.Println("  upstream remote: OK")
 		}
 
 		reg.Repos[repo.Name] = config.RepoEntry{
@@ -269,6 +283,29 @@ func cloneRepo(fullName, localPath string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// extractOrgRepo extracts "org/repo" from a git remote URL.
+// Handles both https://github.com/org/repo.git and git@github.com:org/repo.git
+func extractOrgRepo(url string) string {
+	url = strings.TrimSuffix(url, ".git")
+	url = strings.TrimSpace(url)
+
+	// SSH format: git@github.com:org/repo
+	if strings.Contains(url, ":") && strings.Contains(url, "@") {
+		parts := strings.SplitN(url, ":", 2)
+		if len(parts) == 2 {
+			return parts[1]
+		}
+	}
+
+	// HTTPS format: https://github.com/org/repo
+	parts := strings.Split(url, "/")
+	if len(parts) >= 2 {
+		return parts[len(parts)-2] + "/" + parts[len(parts)-1]
+	}
+
+	return ""
 }
 
 func askForPath(reader *bufio.Reader, repoName string) string {

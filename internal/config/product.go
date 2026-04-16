@@ -15,8 +15,9 @@ import (
 var ProductsFS embed.FS
 
 type RepoRef struct {
-	Name   string `yaml:"name"`
-	Branch string `yaml:"branch"`
+	Name     string `yaml:"name"`
+	Upstream string `yaml:"upstream"` // e.g., "wso2/carbon-apimgt"
+	Branch   string `yaml:"branch"`
 }
 
 type BuildConfig struct {

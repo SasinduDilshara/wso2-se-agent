@@ -3,12 +3,16 @@ version: 4.3.0
 
 repos:
   - name: carbon-apimgt
+    upstream: wso2/carbon-apimgt
     branch: master
   - name: product-apim
+    upstream: wso2/product-apim
     branch: master
   - name: apim-apps
+    upstream: wso2/apim-apps
     branch: main
   - name: docs-apim
+    upstream: wso2/docs-apim
     branch: 4.3.0
 
 build:

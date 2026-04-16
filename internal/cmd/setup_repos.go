@@ -120,7 +120,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 		}
 
 		// Step 2: Ask to auto-clone or provide existing path
-		fmt.Print("  Auto-clone to local machine? [Y/n] ")
+		fmt.Print("  Auto-clone to local machine? (choose 'n' to provide an existing clone path) [Y/n] ")
 		text, _ := reader.ReadString('\n')
 
 		var localPath string

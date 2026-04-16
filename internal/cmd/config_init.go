@@ -69,11 +69,30 @@ func runConfigInit(cmd *cobra.Command, args []string) error {
 		cfg.WorkspaceRoot = wsRoot
 	}
 
+	// Save global config
 	if err := config.SaveGlobalConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
+	fmt.Printf("\nConfig saved to %s\n", cfgPath)
 
-	fmt.Printf("Config saved to %s\n", cfgPath)
+	// Copy embedded product configs to local config dir
+	fmt.Println("\nCopying product configs...")
+	if err := config.CopyEmbeddedProducts(false); err != nil {
+		return fmt.Errorf("failed to copy product configs: %w", err)
+	}
+
+	configDir, _ := config.GetConfigDir()
+	fmt.Printf("Product configs copied to %s/products/\n", configDir)
+
+	// Show what was installed
+	products, _ := config.ListProducts()
+	for _, p := range products {
+		versions, _ := config.ListVersions(p)
+		fmt.Printf("  %s: %s\n", p, strings.Join(versions, ", "))
+	}
+
+	fmt.Printf("\nEdit product configs at %s/products/<product>/<version>/product-config.yaml\n", configDir)
+	fmt.Println("\nNext step: wso2-se-agent setup-repos --product <product> --version <version>")
 	return nil
 }
 
@@ -84,6 +103,8 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	}
 
 	cfgPath, _ := config.GetConfigFilePath()
+	configDir, _ := config.GetConfigDir()
+
 	fmt.Printf("Config file: %s\n\n", cfgPath)
 	fmt.Printf("github_username:  %s\n", cfg.GitHubUsername)
 	fmt.Printf("risk_threshold:   %d\n", cfg.RiskThreshold)
@@ -92,16 +113,18 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("claude_model:     %s\n", cfg.ClaudeModel)
 	fmt.Printf("workspace_root:   %s\n", cfg.WorkspaceRoot)
 
-	// Show available products
+	// Show available products from local config dir
+	fmt.Printf("\nProduct configs: %s/products/\n", configDir)
 	products, err := config.ListProducts()
 	if err == nil && len(products) > 0 {
-		fmt.Printf("\nAvailable products: %s\n", strings.Join(products, ", "))
 		for _, p := range products {
 			versions, err := config.ListVersions(p)
 			if err == nil {
 				fmt.Printf("  %s: %s\n", p, strings.Join(versions, ", "))
 			}
 		}
+	} else {
+		fmt.Println("  (none — run: wso2-se-agent config init)")
 	}
 
 	return nil

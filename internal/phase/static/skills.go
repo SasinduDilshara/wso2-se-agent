@@ -1,12 +1,17 @@
 package static
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
+	configpkg "github.com/Tharsanan1/wso2-se-agent/internal/config"
 	"github.com/Tharsanan1/wso2-se-agent/internal/phase"
 	"github.com/Tharsanan1/wso2-se-agent/internal/state"
 )
@@ -19,13 +24,8 @@ func (p *SkillsPhase) Name() string        { return "skills" }
 func (p *SkillsPhase) Type() phase.PhaseType { return phase.PhaseTypeStatic }
 
 func (p *SkillsPhase) Preconditions(ctx *phase.PhaseContext) error {
-	if ctx.GlobalConfig.SkillsRepoPath == "" {
-		return fmt.Errorf("skills_repo_path not set in config. Run: wso2-se-agent config init")
-	}
-	skillsRef := ctx.ProductConfig.SkillsRef
-	srcDir := filepath.Join(ctx.GlobalConfig.SkillsRepoPath, skillsRef)
-	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
-		return fmt.Errorf("skills source not found at %s", srcDir)
+	if ctx.ProductConfig.SkillsRepo == "" {
+		return fmt.Errorf("skills_repo not set in product config for %s/%s", ctx.ProductConfig.Product, ctx.ProductConfig.Version)
 	}
 	return nil
 }
@@ -36,13 +36,20 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 		Metadata: make(map[string]any),
 	}
 
-	skillsRef := ctx.ProductConfig.SkillsRef
-	srcDir := filepath.Join(ctx.GlobalConfig.SkillsRepoPath, skillsRef)
+	// Resolve the skills source directory
+	skillsLocalPath, err := resolveSkillsPath(ctx)
+	if err != nil {
+		result.Status = state.StatusFailed
+		result.Error = err.Error()
+		return result, err
+	}
 
+	skillsRef := ctx.ProductConfig.SkillsRef
+	srcDir := filepath.Join(skillsLocalPath, skillsRef)
 	dstSkillsDir := filepath.Join(ctx.Workspace, ".claude", "skills")
 
 	// Copy generic skills first (skills/ at repo root)
-	genericSkillsDir := filepath.Join(ctx.GlobalConfig.SkillsRepoPath, "skills")
+	genericSkillsDir := filepath.Join(skillsLocalPath, "skills")
 	if _, err := os.Stat(genericSkillsDir); err == nil {
 		if err := copyDir(genericSkillsDir, dstSkillsDir); err != nil {
 			result.Status = state.StatusFailed
@@ -68,7 +75,7 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 	result.Metadata["port_offset"] = offset
 	ctx.Printer.Info(fmt.Sprintf("  Allocated port offset: %d", offset))
 
-	// Copy CLAUDE.md from skills source — this is the product-specific context
+	// Copy CLAUDE.md from skills source
 	srcClaude := filepath.Join(srcDir, "CLAUDE.md")
 	dstClaude := filepath.Join(ctx.Workspace, "CLAUDE.md")
 	if _, err := os.Stat(srcClaude); err == nil {
@@ -79,7 +86,6 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 		}
 		ctx.Printer.Info("  Copied CLAUDE.md from skills repo")
 	} else {
-		// Fallback: generate a minimal CLAUDE.md
 		content := fmt.Sprintf("# %s %s — Issue #%s\n\nPort offset: %d\nIssue: %s\n",
 			ctx.ProductConfig.Product, ctx.ProductConfig.Version,
 			ctx.IssueNumber, offset, ctx.IssueURL)
@@ -103,6 +109,130 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 
 func (p *SkillsPhase) ExpectedArtifacts() []string {
 	return []string{}
+}
+
+// resolveSkillsPath returns the local path to the skills repo contents.
+// Downloads the tarball from GitHub and caches it.
+func resolveSkillsPath(ctx *phase.PhaseContext) (string, error) {
+	return downloadSkillsRepo(ctx.ProductConfig)
+}
+
+func downloadSkillsRepo(pcfg *configpkg.ProductConfig) (string, error) {
+	repo := pcfg.SkillsRepo
+	branch := pcfg.SkillsBranch
+	if branch == "" {
+		branch = "main"
+	}
+
+	// Cache directory
+	cacheDir, err := configpkg.GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+	cacheDir = filepath.Join(cacheDir, "cache", "skills")
+	cacheKey := strings.ReplaceAll(repo, "/", "-") + "-" + branch
+	cachedPath := filepath.Join(cacheDir, cacheKey)
+
+	// Use cache if it exists
+	if _, err := os.Stat(cachedPath); err == nil {
+		return cachedPath, nil
+	}
+
+	// Download tarball using gh api
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return "", err
+	}
+
+	tarballPath := filepath.Join(cacheDir, cacheKey+".tar.gz")
+	cmd := exec.Command("gh", "api",
+		fmt.Sprintf("repos/%s/tarball/%s", repo, branch),
+		"--output", tarballPath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to download skills repo: %w\n%s", err, string(output))
+	}
+
+	// Extract tarball
+	if err := extractTarball(tarballPath, cachedPath); err != nil {
+		os.RemoveAll(cachedPath)
+		return "", fmt.Errorf("failed to extract skills tarball: %w", err)
+	}
+
+	// Clean up tarball
+	os.Remove(tarballPath)
+
+	return cachedPath, nil
+}
+
+func extractTarball(tarballPath, destDir string) error {
+	f, err := os.Open(tarballPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+
+	// GitHub tarballs have a top-level directory like "owner-repo-commitsha/"
+	// We need to strip that prefix
+	stripPrefix := ""
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// Detect the top-level directory prefix from the first entry
+		if stripPrefix == "" {
+			parts := strings.SplitN(header.Name, "/", 2)
+			if len(parts) > 1 {
+				stripPrefix = parts[0] + "/"
+			}
+		}
+
+		// Strip the prefix
+		name := strings.TrimPrefix(header.Name, stripPrefix)
+		if name == "" {
+			continue
+		}
+
+		target := filepath.Join(destDir, name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			outFile, err := os.Create(target)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+			if err := os.Chmod(target, os.FileMode(header.Mode)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func findFreePortOffset(defaultPorts []int) int {

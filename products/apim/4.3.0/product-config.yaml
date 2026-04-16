@@ -31,4 +31,6 @@ phase_limits:
 
 skip_phases: []
 
+skills_repo: "Tharsanan1/wso2-se-agent-skills"
+skills_branch: "main"
 skills_ref: "api-manager-specific/v4"

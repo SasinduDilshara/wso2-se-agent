@@ -14,7 +14,6 @@ type GlobalConfig struct {
 	LogLevel       string  `yaml:"log_level"`
 	ClaudeModel    string  `yaml:"claude_model"`
 	WorkspaceRoot  string  `yaml:"workspace_root"`
-	SkillsRepoPath string  `yaml:"skills_repo_path"` // local path to wso2-se-agent-skills clone
 }
 
 func DefaultGlobalConfig() *GlobalConfig {

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -135,7 +136,11 @@ func CopyEmbeddedProducts(force bool) error {
 			return err
 		}
 
-		return os.WriteFile(destPath, data, 0644)
+		perm := os.FileMode(0644)
+		if strings.HasSuffix(path, ".sh") {
+			perm = 0755
+		}
+		return os.WriteFile(destPath, data, perm)
 	})
 }
 

@@ -2,6 +2,7 @@ package static
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -87,8 +88,53 @@ func (p *WorkspacePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, e
 		})
 	}
 
+	// Copy product pack zip if configured
+	packSource := ctx.ProductConfig.Build.PackSource
+	if packSource != "" {
+		// Expand ~
+		if len(packSource) > 0 && packSource[0] == '~' {
+			home, _ := os.UserHomeDir()
+			packSource = filepath.Join(home, packSource[1:])
+		}
+
+		if _, err := os.Stat(packSource); err != nil {
+			result.Status = state.StatusFailed
+			result.Error = fmt.Sprintf("product pack not found at %s", packSource)
+			return result, fmt.Errorf("%s", result.Error)
+		}
+
+		destPath := filepath.Join(ctx.Workspace, filepath.Base(packSource))
+		if _, err := os.Stat(destPath); os.IsNotExist(err) {
+			ctx.Printer.Info(fmt.Sprintf("  Copying product pack: %s", filepath.Base(packSource)))
+			if err := copyFileWS(packSource, destPath); err != nil {
+				result.Status = state.StatusFailed
+				result.Error = fmt.Sprintf("failed to copy product pack: %v", err)
+				return result, fmt.Errorf("%s", result.Error)
+			}
+		} else {
+			ctx.Printer.Info(fmt.Sprintf("  Product pack already exists: %s", filepath.Base(packSource)))
+		}
+	}
+
 	result.Status = state.StatusSuccess
 	return result, nil
+}
+
+func copyFileWS(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }
 
 func (p *WorkspacePhase) ExpectedArtifacts() []string {

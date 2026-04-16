@@ -1,5 +1,5 @@
 product: apim
-version: 4.3.0
+version: latest
 
 repos:
   - name: carbon-apimgt

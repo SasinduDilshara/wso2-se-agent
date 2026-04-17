@@ -90,15 +90,22 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 		}
 		ctx.Printer.Info("  Copied CLAUDE.md from skills repo")
 	} else {
-		content := fmt.Sprintf("# %s %s — Issue #%s\n\nPort offset: %d\nIssue: %s\n",
-			ctx.ProductConfig.Product, ctx.ProductConfig.Version,
-			ctx.IssueNumber, offset, ctx.IssueURL)
-		if err := os.WriteFile(dstClaude, []byte(content), 0644); err != nil {
+		ctx.Printer.Info(fmt.Sprintf("  Warning: CLAUDE.md not found at %s", srcClaude))
+		if ctx.Printer.ConfirmProceed("  Generate a minimal CLAUDE.md instead?") {
+			content := fmt.Sprintf("# %s %s — Issue #%s\n\nPort offset: %d\nIssue: %s\n",
+				ctx.ProductConfig.Product, ctx.ProductConfig.Version,
+				ctx.IssueNumber, offset, ctx.IssueURL)
+			if err := os.WriteFile(dstClaude, []byte(content), 0644); err != nil {
+				result.Status = state.StatusFailed
+				result.Error = fmt.Sprintf("failed to write CLAUDE.md: %v", err)
+				return result, fmt.Errorf("%s", result.Error)
+			}
+			ctx.Printer.Info("  Generated minimal CLAUDE.md")
+		} else {
 			result.Status = state.StatusFailed
-			result.Error = fmt.Sprintf("failed to write CLAUDE.md: %v", err)
+			result.Error = "CLAUDE.md not found and user declined fallback"
 			return result, fmt.Errorf("%s", result.Error)
 		}
-		ctx.Printer.Info("  Generated minimal CLAUDE.md")
 	}
 
 	// Initialize state

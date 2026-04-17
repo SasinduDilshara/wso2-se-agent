@@ -65,17 +65,23 @@ func (p *WorkspacePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, e
 		git.DeleteBranch(entry.LocalPath, branch)
 		git.PruneWorktrees(entry.LocalPath)
 
-		// Create worktree — try upstream/<branch> first, fall back to origin/<branch>
+		// Create worktree from upstream/<branch>
 		startPoint := fmt.Sprintf("upstream/%s", repo.Branch)
 
 		ctx.Printer.Info(fmt.Sprintf("  Creating worktree: %s (branch: %s from %s)", repo.Name, branch, startPoint))
 		if err := git.CreateWorktree(entry.LocalPath, worktreePath, branch, startPoint); err != nil {
-			// Fallback to origin/<branch>
+			// Ask user before falling back
 			fallback := fmt.Sprintf("origin/%s", repo.Branch)
-			ctx.Printer.Info(fmt.Sprintf("  Falling back to %s...", fallback))
-			if err2 := git.CreateWorktree(entry.LocalPath, worktreePath, branch, fallback); err2 != nil {
+			ctx.Printer.Info(fmt.Sprintf("  Failed to create from %s: %v", startPoint, err))
+			if ctx.Printer.ConfirmProceed(fmt.Sprintf("  Fall back to %s instead?", fallback)) {
+				if err2 := git.CreateWorktree(entry.LocalPath, worktreePath, branch, fallback); err2 != nil {
+					result.Status = state.StatusFailed
+					result.Error = fmt.Sprintf("failed to create worktree for %s from %s: %v", repo.Name, fallback, err2)
+					return result, fmt.Errorf("%s", result.Error)
+				}
+			} else {
 				result.Status = state.StatusFailed
-				result.Error = fmt.Sprintf("failed to create worktree for %s: %v (fallback: %v)", repo.Name, err, err2)
+				result.Error = fmt.Sprintf("failed to create worktree for %s from %s", repo.Name, startPoint)
 				return result, fmt.Errorf("%s", result.Error)
 			}
 		}

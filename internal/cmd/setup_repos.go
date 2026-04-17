@@ -74,7 +74,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 			fmt.Print("  Re-configure? [y/N] ")
 			text, _ := reader.ReadString('\n')
 			if strings.TrimSpace(strings.ToLower(text)) != "y" {
-				fmt.Println("  Skipped.\n")
+				fmt.Println("  Skipped.")
 				continue
 			}
 		}
@@ -91,7 +91,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 		if strings.TrimSpace(strings.ToLower(text)) == "y" {
 			localPath := askForPath(reader, repo.Name)
 			if localPath == "" {
-				fmt.Println("  Skipped.\n")
+				fmt.Println("  Skipped.")
 				continue
 			}
 
@@ -136,7 +136,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 			fmt.Print("  Fork it now? [Y/n] ")
 			text, _ := reader.ReadString('\n')
 			if strings.TrimSpace(strings.ToLower(text)) == "n" {
-				fmt.Println("  Skipped.\n")
+				fmt.Println("  Skipped.")
 				continue
 			}
 
@@ -144,7 +144,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 			forkFullName, err = forkRepo(upstream)
 			if err != nil {
 				fmt.Printf("  Failed to fork: %v\n", err)
-				fmt.Println("  Skipping this repo.\n")
+				fmt.Println("  Skipping this repo.")
 				continue
 			}
 			fmt.Printf("  Forked: %s\n", forkFullName)
@@ -162,7 +162,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  Cloning %s to %s...\n", forkFullName, localPath)
 			if err := cloneRepo(forkFullName, localPath); err != nil {
 				fmt.Printf("  Failed to clone: %v\n", err)
-				fmt.Println("  Skipping this repo.\n")
+				fmt.Println("  Skipping this repo.")
 				continue
 			}
 			fmt.Println("  Cloned successfully.")

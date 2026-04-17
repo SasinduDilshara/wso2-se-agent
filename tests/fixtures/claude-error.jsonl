@@ -1,0 +1,2 @@
+{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Starting work..."}},"session_id":"test-session"}
+{"type":"result","subtype":"error","is_error":true,"result":"Budget exceeded. Spent $10.00 of $10.00 budget.","total_cost_usd":10.00,"session_id":"test-session"}

@@ -1,0 +1,36 @@
+#!/bin/bash
+# Mock gh binary for integration tests.
+# Handles: gh api repos/.../tarball/..., gh api repos/.../forks, gh repo clone, gh repo fork
+
+case "$*" in
+  *"tarball"*)
+    # Return a minimal tarball with skills
+    TARBALL="${WSE_MOCK_GH_TARBALL:-}"
+    if [ -n "$TARBALL" ] && [ -f "$TARBALL" ]; then
+      cat "$TARBALL"
+    else
+      echo "mock gh: no tarball fixture" >&2
+      exit 1
+    fi
+    ;;
+  *"forks"*)
+    # Return empty array (no forks found)
+    echo "[]"
+    ;;
+  "repo clone"*)
+    # Pretend to clone
+    TARGET=$(echo "$*" | awk '{print $NF}')
+    mkdir -p "$TARGET"
+    cd "$TARGET" && git init -q && git commit --allow-empty -m "init" -q
+    ;;
+  "repo fork"*)
+    echo '{"full_name":"testuser/testrepo"}'
+    ;;
+  "auth status"*)
+    echo "Logged in to github.com"
+    ;;
+  *)
+    echo "mock gh: unhandled args: $*" >&2
+    exit 0
+    ;;
+esac

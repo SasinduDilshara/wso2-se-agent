@@ -1,0 +1,61 @@
+#!/bin/bash
+# Mock claude binary for integration tests.
+# Reads WSE_MOCK_CLAUDE_FIXTURE env var to determine which fixture to output.
+# Reads WSE_MOCK_CLAUDE_EXIT_CODE for the exit code (default 0).
+# Creates any files that the fixture references via Write tool calls.
+
+FIXTURE="${WSE_MOCK_CLAUDE_FIXTURE:-}"
+EXIT_CODE="${WSE_MOCK_CLAUDE_EXIT_CODE:-0}"
+WORKSPACE_DIR="$(pwd)"
+
+if [ -z "$FIXTURE" ]; then
+  echo '{"type":"result","subtype":"success","is_error":false,"result":"mock: no fixture specified","total_cost_usd":0.01,"session_id":"mock"}'
+  exit 0
+fi
+
+if [ ! -f "$FIXTURE" ]; then
+  echo "mock claude: fixture not found: $FIXTURE" >&2
+  exit 1
+fi
+
+# Parse the fixture and create any files referenced by Write tool_use blocks
+# This simulates Claude actually writing files to the workspace
+while IFS= read -r line; do
+  if echo "$line" | grep -q '"name":"Write"'; then
+    FILE_PATH=$(echo "$line" | python3 -c "
+import sys, json
+try:
+    obj = json.loads(sys.stdin.read())
+    msg = obj.get('message', obj)
+    for block in msg.get('content', []):
+        if block.get('name') == 'Write':
+            print(block.get('input', {}).get('file_path', ''))
+            break
+except: pass
+" 2>/dev/null)
+    if [ -n "$FILE_PATH" ]; then
+      # Handle relative paths
+      if [[ "$FILE_PATH" != /* ]]; then
+        FILE_PATH="$WORKSPACE_DIR/$FILE_PATH"
+      fi
+      mkdir -p "$(dirname "$FILE_PATH")"
+      CONTENT=$(echo "$line" | python3 -c "
+import sys, json
+try:
+    obj = json.loads(sys.stdin.read())
+    msg = obj.get('message', obj)
+    for block in msg.get('content', []):
+        if block.get('name') == 'Write':
+            print(block.get('input', {}).get('content', ''))
+            break
+except: pass
+" 2>/dev/null)
+      echo "$CONTENT" > "$FILE_PATH"
+    fi
+  fi
+done < "$FIXTURE"
+
+# Output the fixture as stream-json
+cat "$FIXTURE"
+
+exit "$EXIT_CODE"

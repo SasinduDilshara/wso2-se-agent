@@ -49,7 +49,11 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 	dstSkillsDir := filepath.Join(ctx.Workspace, ".claude", "skills")
 
 	// Copy generic skills first (skills/ at repo root)
-	genericSkillsDir := filepath.Join(skillsLocalPath, "skills")
+	genericRef := ctx.ProductConfig.GenericSkillsRef
+	if genericRef == "" {
+		genericRef = "skills"
+	}
+	genericSkillsDir := filepath.Join(skillsLocalPath, genericRef)
 	if _, err := os.Stat(genericSkillsDir); err == nil {
 		if err := copyDir(genericSkillsDir, dstSkillsDir); err != nil {
 			result.Status = state.StatusFailed

@@ -3,12 +3,24 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const AppName = "wso2-se-agent"
 const ConfigDirName = ".wso2-se-agent"
+const ConfigDirEnvVar = "WSO2_SE_AGENT_HOME"
 
 func GetConfigDir() (string, error) {
+	if override := os.Getenv(ConfigDirEnvVar); override != "" {
+		if strings.HasPrefix(override, "~") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			override = filepath.Join(home, override[1:])
+		}
+		return override, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

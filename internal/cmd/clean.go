@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	gitutil "github.com/Tharsanan1/wso2-se-agent/internal/git"
-	"github.com/Tharsanan1/wso2-se-agent/internal/state"
+	gitutil "github.com/SasinduDilshara/wso2-se-agent/internal/git"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/state"
 )
 
 var cleanAll bool

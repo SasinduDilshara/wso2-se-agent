@@ -8,7 +8,7 @@ import (
 
 type RepoEntry struct {
 	LocalPath string `yaml:"local_path"`
-	Fork      string `yaml:"fork"`     // e.g., "Tharsanan1/carbon-apimgt"
+	Fork      string `yaml:"fork"`     // e.g., "SasinduDilshara/carbon-apimgt"
 	Upstream  string `yaml:"upstream"` // e.g., "wso2/carbon-apimgt"
 }
 

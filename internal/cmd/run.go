@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/Tharsanan1/wso2-se-agent/internal/config"
-	"github.com/Tharsanan1/wso2-se-agent/internal/issue"
-	"github.com/Tharsanan1/wso2-se-agent/internal/phase"
-	"github.com/Tharsanan1/wso2-se-agent/internal/phase/ai"
-	"github.com/Tharsanan1/wso2-se-agent/internal/phase/static"
-	"github.com/Tharsanan1/wso2-se-agent/internal/state"
-	"github.com/Tharsanan1/wso2-se-agent/internal/ui"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/config"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/issue"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/phase"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/phase/ai"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/phase/static"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/state"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/ui"
 )
 
 var (

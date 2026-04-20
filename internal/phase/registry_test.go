@@ -3,7 +3,7 @@ package phase
 import (
 	"testing"
 
-	"github.com/Tharsanan1/wso2-se-agent/internal/state"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/state"
 )
 
 // stubPhase is a minimal Phase implementation for testing.

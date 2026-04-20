@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/Tharsanan1/wso2-se-agent/internal/config"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/config"
 )
 
 var configCmd = &cobra.Command{

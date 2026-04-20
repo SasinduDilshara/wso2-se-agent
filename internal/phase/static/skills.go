@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	configpkg "github.com/Tharsanan1/wso2-se-agent/internal/config"
-	"github.com/Tharsanan1/wso2-se-agent/internal/phase"
-	"github.com/Tharsanan1/wso2-se-agent/internal/state"
+	configpkg "github.com/SasinduDilshara/wso2-se-agent/internal/config"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/phase"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/state"
 )
 
 type SkillsPhase struct{}

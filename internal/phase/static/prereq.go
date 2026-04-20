@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/Tharsanan1/wso2-se-agent/internal/phase"
-	"github.com/Tharsanan1/wso2-se-agent/internal/state"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/phase"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/state"
 )
 
 type PrereqPhase struct{}

@@ -127,7 +127,7 @@ func (e *TestEnv) CreateSkillsTarball() string {
 	defer tw.Close()
 
 	// GitHub tarballs have a top-level prefix like "owner-repo-sha/"
-	prefix := "Tharsanan1-wso2-se-agent-skills-abc1234/"
+	prefix := "SasinduDilshara-wso2-se-agent-skills-abc1234/"
 
 	files := map[string]string{
 		prefix + "skills/risk-assessment/SKILL.md":                  "---\nname: risk-assessment\n---\n# Risk Assessment Skill\n",

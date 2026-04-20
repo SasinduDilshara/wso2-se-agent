@@ -3,8 +3,8 @@ package ai
 import (
 	"fmt"
 
-	"github.com/Tharsanan1/wso2-se-agent/internal/phase"
-	"github.com/Tharsanan1/wso2-se-agent/internal/state"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/phase"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/state"
 )
 
 type RiskAssessmentPhase struct {

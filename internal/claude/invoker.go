@@ -116,6 +116,7 @@ func processStream(r io.Reader, processedLog, rawLog *os.File) *InvocationResult
 	result := &InvocationResult{}
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer
+	inThinking := false
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -137,7 +138,7 @@ func processStream(r io.Reader, processedLog, rawLog *os.File) *InvocationResult
 
 		switch msgType {
 		case "stream_event":
-			handleStreamEvent(msg, processedLog)
+			inThinking = handleStreamEvent(msg, processedLog, inThinking)
 		case "assistant":
 			handleAssistantMessage(msg, processedLog)
 		case "result":
@@ -148,17 +149,28 @@ func processStream(r io.Reader, processedLog, rawLog *os.File) *InvocationResult
 	return result
 }
 
-func handleStreamEvent(msg map[string]any, logFile *os.File) {
+func handleStreamEvent(msg map[string]any, logFile *os.File, inThinking bool) bool {
 	event, _ := msg["event"].(map[string]any)
 	if event == nil {
-		return
+		return inThinking
 	}
 
 	delta, _ := event["delta"].(map[string]any)
 	if delta != nil {
 		deltaType, _ := delta["type"].(string)
 		if deltaType == "text_delta" {
+			if inThinking {
+				// Close thinking section before text output
+				out := fmt.Sprintf("\n%s--- end thinking ---%s\n", colorDim, colorReset)
+				fmt.Print(out)
+				fmt.Fprint(logFile, out)
+				inThinking = false
+			}
 			text, _ := delta["text"].(string)
+			fmt.Print(text)
+			fmt.Fprint(logFile, text)
+		} else if deltaType == "thinking_delta" {
+			text, _ := delta["thinking"].(string)
 			fmt.Print(text)
 			fmt.Fprint(logFile, text)
 		}
@@ -170,14 +182,27 @@ func handleStreamEvent(msg map[string]any, logFile *os.File) {
 		if cb != nil {
 			cbType, _ := cb["type"].(string)
 			if cbType == "tool_use" {
+				if inThinking {
+					out := fmt.Sprintf("\n%s--- end thinking ---%s\n", colorDim, colorReset)
+					fmt.Print(out)
+					fmt.Fprint(logFile, out)
+					inThinking = false
+				}
 				name, _ := cb["name"].(string)
 				color := toolColor(name)
 				out := fmt.Sprintf("\n%s[tool] %s%s", color, name, colorReset)
 				fmt.Print(out)
 				fmt.Fprint(logFile, out)
+			} else if cbType == "thinking" {
+				out := fmt.Sprintf("\n%s--- thinking ---%s\n", colorDim, colorReset)
+				fmt.Print(out)
+				fmt.Fprint(logFile, out)
+				inThinking = true
 			}
 		}
 	}
+
+	return inThinking
 }
 
 func handleAssistantMessage(msg map[string]any, logFile *os.File) {
@@ -194,6 +219,8 @@ func handleAssistantMessage(msg map[string]any, logFile *os.File) {
 		}
 
 		blockType, _ := b["type"].(string)
+		// Note: "thinking" blocks are intentionally skipped here because
+		// they are already written via thinking_delta stream events.
 		if blockType == "tool_use" {
 			name, _ := b["name"].(string)
 			input, _ := b["input"].(map[string]any)
@@ -263,6 +290,7 @@ const (
 	colorCyan    = "\033[1;36m"
 	colorMagenta = "\033[1;35m"
 	colorBoldYellow = "\033[1;33m"
+	colorDim        = "\033[2m"
 )
 
 func toolColor(name string) string {

@@ -20,6 +20,13 @@ go install github.com/Tharsanan1/wso2-se-agent/cmd/wso2-se-agent@latest
 
 Make sure `$(go env GOPATH)/bin` is in your PATH.
 
+## Uninstall
+
+```bash
+rm $(which wso2-se-agent)
+rm -rf ~/.wso2-se-agent
+```
+
 ## Quick Start
 
 ```bash

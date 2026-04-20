@@ -60,10 +60,12 @@ func (p *WorkspacePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, e
 			ctx.Printer.Info(fmt.Sprintf("  Warning: fetch upstream failed for %s: %v", repo.Name, err))
 		}
 
-		// Clean up any existing branch/worktree from a prior run
+		// Clean up any existing branch/worktree from a prior run.
+		// Prune first so stale worktree refs are removed before deleting the branch;
+		// otherwise git refuses to delete a branch "checked out" in a stale worktree.
 		branch := fmt.Sprintf("fix/issue-%s", ctx.IssueNumber)
-		git.DeleteBranch(entry.LocalPath, branch)
 		git.PruneWorktrees(entry.LocalPath)
+		git.DeleteBranch(entry.LocalPath, branch)
 
 		// Create worktree from upstream/<branch>
 		startPoint := fmt.Sprintf("upstream/%s", repo.Branch)

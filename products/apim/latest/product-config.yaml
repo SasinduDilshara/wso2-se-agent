@@ -13,7 +13,7 @@ repos:
     branch: main
   - name: docs-apim
     upstream: wso2/docs-apim
-    branch: 4.3.0
+    branch: master
 
 build:
   pack_zip_pattern: "wso2am-*.zip"

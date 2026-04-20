@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	gitutil "github.com/Tharsanan1/wso2-se-agent/internal/git"
@@ -37,20 +38,35 @@ func runClean(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  Warning: %v\n", err)
 		}
 
-		// Clean up branch
-		gitutil.DeleteBranch(wt.BasePath, wt.Branch)
-
-		// Prune
+		// Prune stale worktree refs first, then delete branch
 		gitutil.PruneWorktrees(wt.BasePath)
+		gitutil.DeleteBranch(wt.BasePath, wt.Branch)
 	}
 
 	if cleanAll {
 		fmt.Printf("Deleting workspace: %s\n", wsPath)
-		if err := os.RemoveAll(wsPath); err != nil {
-			return fmt.Errorf("failed to delete workspace: %w", err)
-		}
+		// Ensure all files are writable before removal; extracted product
+		// packs may contain read-only directories from server runtime.
+		forceRemoveAll(wsPath)
 	}
 
 	fmt.Println("Clean complete.")
 	return nil
+}
+
+// forceRemoveAll makes all directories writable then removes the tree.
+// WSO2 product packs create read-only dirs that cause os.RemoveAll to fail.
+func forceRemoveAll(root string) {
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			os.Chmod(path, 0755)
+		}
+		return nil
+	})
+	if err := os.RemoveAll(root); err != nil {
+		fmt.Printf("  Warning: %v\n", err)
+	}
 }

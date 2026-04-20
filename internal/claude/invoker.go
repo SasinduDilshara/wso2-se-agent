@@ -213,6 +213,7 @@ func handleAssistantMessage(msg map[string]any, logFile *os.File) {
 	}
 }
 
+
 func handleResultMessage(msg map[string]any, logFile *os.File, result *InvocationResult) {
 	if resultText, ok := msg["result"].(string); ok {
 		result.ResultText = resultText
@@ -253,15 +254,23 @@ func printToolSummary(name string, input map[string]any, logFile *os.File) {
 		if skill, ok := input["skill"].(string); ok {
 			detail = ": /" + skill
 		}
-	default:
-		detail = ""
+	case "WebSearch":
+		if query, ok := input["query"].(string); ok {
+			detail = ": " + query
+		}
+	case "WebFetch":
+		if url, ok := input["url"].(string); ok {
+			detail = ": " + url
+		}
+	case "TaskOutput":
+		if taskID, ok := input["task_id"].(string); ok {
+			detail = ": " + taskID
+		}
 	}
 
-	if detail != "" {
-		out := detail + "\n"
-		fmt.Print(out)
-		fmt.Fprint(logFile, out)
-	}
+	out := detail + "\n"
+	fmt.Print(out)
+	fmt.Fprint(logFile, out)
 }
 
 // ANSI colors

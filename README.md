@@ -15,7 +15,7 @@ A CLI that developers can use to automate resolving GitHub issues on a product u
 ## Install
 
 ```bash
-go install github.com/Tharsanan1/wso2-se-agent/cmd/wso2-se-agent@v0.4.4
+go install github.com/Tharsanan1/wso2-se-agent/cmd/wso2-se-agent@latest
 ```
 
 Make sure `$(go env GOPATH)/bin` is in your PATH.

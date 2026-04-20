@@ -64,7 +64,14 @@ func LoadProductConfig(product, version string) (*ProductConfig, error) {
 	}
 
 	// Fall back to embedded
-	return loadFromEmbed(product, version)
+	cfg, err := loadFromEmbed(product, version)
+	if err != nil {
+		configDir, _ := GetConfigDir()
+		productsDir := filepath.Join(configDir, "products")
+		return nil, fmt.Errorf("product config not found for %s/%s\n\nTo add a new product, create:\n  %s/%s/%s/product-config.yaml\n\nOr if this is a built-in product, run:\n  wso2-se-agent config init",
+			product, version, productsDir, product, version)
+	}
+	return cfg, nil
 }
 
 func loadFromFile(path, sourceDir string) (*ProductConfig, error) {

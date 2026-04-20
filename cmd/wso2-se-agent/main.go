@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	wso2seagent "github.com/Tharsanan1/wso2-se-agent"
-	"github.com/Tharsanan1/wso2-se-agent/internal/cmd"
-	"github.com/Tharsanan1/wso2-se-agent/internal/config"
+	wso2seagent "github.com/SasinduDilshara/wso2-se-agent"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/cmd"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/config"
 )
 
 var version = "dev"

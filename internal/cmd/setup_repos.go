@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/Tharsanan1/wso2-se-agent/internal/config"
-	gitutil "github.com/Tharsanan1/wso2-se-agent/internal/git"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/config"
+	gitutil "github.com/SasinduDilshara/wso2-se-agent/internal/git"
 )
 
 var (
@@ -202,7 +202,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 }
 
 // findUserFork uses the GitHub API to find the user's fork of an upstream repo.
-// Returns the full name (e.g., "Tharsanan1/carbon-apimgt-wso2") or "" if not found.
+// Returns the full name (e.g., "SasinduDilshara/carbon-apimgt-wso2") or "" if not found.
 func findUserFork(upstreamRepo, username string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

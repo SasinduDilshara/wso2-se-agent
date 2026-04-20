@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tharsanan1/wso2-se-agent/internal/claude"
-	"github.com/Tharsanan1/wso2-se-agent/internal/state"
-	"github.com/Tharsanan1/wso2-se-agent/tests/testutil"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/claude"
+	"github.com/SasinduDilshara/wso2-se-agent/internal/state"
+	"github.com/SasinduDilshara/wso2-se-agent/tests/testutil"
 )
 
 func TestStreamParser_ParsesFixture(t *testing.T) {
@@ -190,7 +190,7 @@ runtime:
   startup_timeout_seconds: 10
 phase_limits:
   reproduce: 5.0
-skills_repo: "Tharsanan1/wso2-se-agent-skills"
+skills_repo: "SasinduDilshara/wso2-se-agent-skills"
 skills_branch: "main"
 skills_ref: "api-manager-specific/v4"
 generic_skills_ref: "skills"

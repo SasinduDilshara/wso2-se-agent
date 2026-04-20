@@ -1,4 +1,4 @@
-module github.com/Tharsanan1/wso2-se-agent
+module github.com/SasinduDilshara/wso2-se-agent
 
 go 1.26.1
 

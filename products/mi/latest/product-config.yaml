@@ -1,0 +1,49 @@
+product: mi
+version: latest
+
+repos:
+  - name: product-micro-integrator
+    upstream: wso2/product-micro-integrator
+    branch: master
+  - name: wso2-synapse
+    upstream: wso2/wso2-synapse
+    branch: master
+  - name: carbon-mediation
+    upstream: wso2/carbon-mediation
+    branch: master
+  - name: carbon-data
+    upstream: wso2/carbon-data
+    branch: master
+  - name: product-mi-tooling
+    upstream: wso2/product-mi-tooling
+    branch: master
+  - name: vscode-extensions
+    upstream: wso2/vscode-extensions
+    branch: main
+  - name: docs-mi
+    upstream: wso2/docs-mi
+    branch: main
+
+build:
+  pack_zip_pattern: "wso2mi-*.zip"
+  pack_source: ""
+
+runtime:
+  startup_command: "sh micro-integrator.sh"
+  health_check_log: "WSO2 Micro Integrator started in"
+  default_ports: [8290, 8253, 9164, 9201]
+  startup_timeout_seconds: 180
+
+phase_limits:
+  reproduce: 10.0
+  risk-assessment: 2.0
+  plan-and-fix: 15.0
+  verify: 10.0
+  test-coverage: 10.0
+  pr: 5.0
+
+skip_phases: []
+
+skills_repo: "SasinduDilshara/mi-skills-docs"
+skills_branch: "main"
+generic_skills_ref: "skills"

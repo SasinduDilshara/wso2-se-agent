@@ -309,9 +309,26 @@ func extractOrgRepo(url string) string {
 	return ""
 }
 
+// cleanInput processes backspace (0x08) and delete (0x7F) characters,
+// removing the preceding character for each occurrence.
+func cleanInput(s string) string {
+	var result []byte
+	for i := 0; i < len(s); i++ {
+		if s[i] == 0x7F || s[i] == 0x08 {
+			if len(result) > 0 {
+				result = result[:len(result)-1]
+			}
+		} else {
+			result = append(result, s[i])
+		}
+	}
+	return string(result)
+}
+
 func askForPath(reader *bufio.Reader, repoName string) string {
 	fmt.Printf("  Local clone path for %s: ", repoName)
 	localPath, _ := reader.ReadString('\n')
+	localPath = cleanInput(localPath)
 	localPath = strings.TrimSpace(localPath)
 
 	if localPath == "" {

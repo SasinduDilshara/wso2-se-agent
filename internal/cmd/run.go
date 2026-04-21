@@ -24,8 +24,6 @@ var (
 	phaseOnly     string
 	fromPhase     string
 	toPhase       string
-	setup         bool
-	autoFix       bool
 	yes           bool
 	dryRun        bool
 	riskThreshold int
@@ -48,8 +46,6 @@ func init() {
 	runCmd.Flags().StringVar(&phaseOnly, "phase", "", "Run a single phase only")
 	runCmd.Flags().StringVar(&fromPhase, "from", "", "Start from this phase")
 	runCmd.Flags().StringVar(&toPhase, "to", "", "Stop after this phase")
-	runCmd.Flags().BoolVar(&setup, "setup", false, "Shorthand for --from prereq --to skills")
-	runCmd.Flags().BoolVar(&autoFix, "auto-fix", false, "Shorthand for --from reproduce --to pr")
 	runCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmations (risk gate still applies)")
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show the plan without executing")
 	runCmd.Flags().IntVar(&riskThreshold, "risk-threshold", -1, "Risk score threshold (0-10, default from config)")
@@ -111,16 +107,6 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 	budget := globalCfg.MaxBudgetUSD
 	if maxBudgetUSD > 0 {
 		budget = maxBudgetUSD
-	}
-
-	// Apply flag sugar
-	if setup {
-		fromPhase = "prereq"
-		toPhase = "skills"
-	}
-	if autoFix {
-		fromPhase = "reproduce"
-		toPhase = "pr"
 	}
 
 	// Build phase registry

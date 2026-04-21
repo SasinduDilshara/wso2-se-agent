@@ -52,9 +52,19 @@ func runConfigInit(cmd *cobra.Command, args []string) error {
 
 	cfg := config.DefaultGlobalConfig()
 
-	// Prompt for GitHub username
+	// Auto-detect GitHub username
+	detected, _ := config.LoadGlobalConfig()
+	if detected != nil && detected.GitHubUsername != "" {
+		cfg.GitHubUsername = detected.GitHubUsername
+	}
+
+	// Prompt for GitHub username (pre-filled if detected)
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("GitHub username: ")
+	if cfg.GitHubUsername != "" {
+		fmt.Printf("GitHub username [%s]: ", cfg.GitHubUsername)
+	} else {
+		fmt.Print("GitHub username: ")
+	}
 	username, _ := reader.ReadString('\n')
 	username = strings.TrimSpace(username)
 	if username != "" {

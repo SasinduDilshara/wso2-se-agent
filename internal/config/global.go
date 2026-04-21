@@ -1,8 +1,12 @@
 package config
 
 import (
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -59,7 +63,25 @@ func LoadGlobalConfig() (*GlobalConfig, error) {
 		cfg.WorkspaceRoot = filepath.Join(home, cfg.WorkspaceRoot[1:])
 	}
 
+	// Auto-detect GitHub username if not set
+	if cfg.GitHubUsername == "" {
+		cfg.GitHubUsername = detectGitHubUsername()
+	}
+
 	return cfg, nil
+}
+
+// detectGitHubUsername uses gh api to get the authenticated user's login.
+func detectGitHubUsername() string {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "gh", "api", "user", "--jq", ".login")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func SaveGlobalConfig(cfg *GlobalConfig) error {

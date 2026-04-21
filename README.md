@@ -30,29 +30,28 @@ rm -rf ~/.wso2-se-agent
 ## Quick Start
 
 ```bash
-# 1. Initialize config and copy product configs locally
-wso2-se-agent config init
-
-# 2. Register your repo clones for a product
+# 1. Register your repo clones for a product (one-time setup)
 wso2-se-agent setup-repos --product apim --version latest
 
-# 3. Run against an issue
+# 2. Run against an issue
 wso2-se-agent run \
   --product apim --version latest \
   --issue https://github.com/wso2/product-apim/issues/4856 \
   --pack /path/to/wso2am-4.4.0.zip
 ```
 
+GitHub username is auto-detected from `gh`. No `config init` needed — sensible defaults are used out of the box.
+
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `config init` | Create config and copy product configs to `~/.wso2-se-agent/` |
-| `config show` | Show current configuration |
 | `setup-repos` | Register local repo clones (auto-detects forks, offers to clone) |
 | `run` | Run the issue-fixing pipeline |
 | `status <workspace>` | Show phase results, costs, risk score |
 | `clean <workspace>` | Remove worktrees and clean up |
+| `config init` | (Optional) Create config with custom settings |
+| `config show` | Show current configuration |
 
 ## Pipeline Phases
 
@@ -77,8 +76,6 @@ wso2-se-agent run \
 --pack           Path to product pack zip (required)
 --phase          Run a single phase only
 --from / --to    Run a range of phases
---setup          Shorthand for --from prereq --to skills
---auto-fix       Shorthand for --from reproduce --to pr
 --yes            Skip pause prompts (risk gate still applies)
 --risk-threshold Override risk threshold (0-10, default 7)
 --max-budget-usd Override per-phase budget in USD
@@ -88,11 +85,13 @@ wso2-se-agent run \
 
 ## Configuration
 
-After `config init`, configs live at `~/.wso2-se-agent/`:
+Configuration is optional. The CLI works with sensible defaults out of the box.
+
+To customize settings, run `wso2-se-agent config init` or edit files directly:
 
 ```
 ~/.wso2-se-agent/
-├── config.yaml                          # global settings
+├── config.yaml                          # global settings (optional)
 ├── repos.yaml                           # registered repo clones
 └── products/
     └── apim/

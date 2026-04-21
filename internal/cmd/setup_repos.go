@@ -47,7 +47,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 	}
 
 	if globalCfg.GitHubUsername == "" {
-		return fmt.Errorf("github_username not set. Run: wso2-se-agent config init")
+		return fmt.Errorf("github_username not set and could not auto-detect from gh. Run: gh auth login")
 	}
 
 	reg, err := config.LoadRepoRegistry()

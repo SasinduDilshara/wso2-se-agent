@@ -79,7 +79,7 @@ func TestPipeline_FromTo(t *testing.T) {
 	}
 }
 
-func TestPipeline_Setup(t *testing.T) {
+func TestPipeline_FromPrereqToSkills(t *testing.T) {
 	r := NewRegistry()
 	for _, name := range DefaultPipeline {
 		r.Register(newStub(name, PhaseTypeStatic))
@@ -96,7 +96,7 @@ func TestPipeline_Setup(t *testing.T) {
 	}
 }
 
-func TestPipeline_AutoFix(t *testing.T) {
+func TestPipeline_FromReproduceToPR(t *testing.T) {
 	r := NewRegistry()
 	for _, name := range DefaultPipeline {
 		r.Register(newStub(name, PhaseTypeStatic))

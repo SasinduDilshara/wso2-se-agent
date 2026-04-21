@@ -207,7 +207,8 @@ skills_ref: "api-manager-specific/v4"
 		"--version", "latest",
 		"--issue", "https://github.com/wso2/product-apim/issues/4856",
 		"--pack", packPath,
-		"--setup",
+		"--from", "prereq",
+		"--to", "skills",
 		"--yes",
 	)
 	cmd.Env = append(os.Environ(),

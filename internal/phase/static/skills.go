@@ -83,6 +83,23 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 		ctx.Printer.Info(fmt.Sprintf("  Installed product skills from %s", skillsRef))
 	}
 
+	// Copy references directory from the product skills repo so CLAUDE.md links resolve.
+	// Path is configurable per product via `references_ref` in product-config.yaml.
+	if refsRef := ctx.ProductConfig.ReferencesRef; refsRef != "" {
+		srcRefsDir := filepath.Join(productLocalPath, refsRef)
+		if _, err := os.Stat(srcRefsDir); err == nil {
+			dstRefsDir := filepath.Join(ctx.Workspace, "references")
+			if err := copyDir(srcRefsDir, dstRefsDir); err != nil {
+				result.Status = state.StatusFailed
+				result.Error = fmt.Sprintf("failed to copy references: %v", err)
+				return result, fmt.Errorf("%s", result.Error)
+			}
+			ctx.Printer.Info(fmt.Sprintf("  Installed references from %s", refsRef))
+		} else {
+			ctx.Printer.Info(fmt.Sprintf("  Warning: references_ref %q not found in skills repo", refsRef))
+		}
+	}
+
 	// Allocate port offset
 	offset := findFreePortOffset(ctx.ProductConfig.Runtime.DefaultPorts)
 	result.Metadata["port_offset"] = offset

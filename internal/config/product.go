@@ -41,10 +41,11 @@ type ProductConfig struct {
 	Runtime      RuntimeConfig      `yaml:"runtime"`
 	PhaseLimits  map[string]float64 `yaml:"phase_limits"`
 	SkipPhases   []string           `yaml:"skip_phases"`
-	SkillsRepo   string `yaml:"skills_repo"`   // GitHub org/repo for product-specific skills
-	SkillsBranch string `yaml:"skills_branch"` // branch/tag/commit
-	SkillsRef    string `yaml:"skills_ref"`    // product-specific skills path within repo
-	ClaudeMDURL  string `yaml:"claude_md_url"` // GitHub URL to a custom CLAUDE.md (e.g., https://github.com/org/repo/blob/main/CLAUDE.md)
+	SkillsRepo    string `yaml:"skills_repo"`     // GitHub org/repo for product-specific skills
+	SkillsBranch  string `yaml:"skills_branch"`   // branch/tag/commit
+	SkillsRef     string `yaml:"skills_ref"`      // product-specific skills path within repo
+	ReferencesRef string `yaml:"references_ref"`  // path within skills repo to a references/ directory to copy into the workspace (optional)
+	ClaudeMDURL   string `yaml:"claude_md_url"`   // GitHub URL to a custom CLAUDE.md (e.g., https://github.com/org/repo/blob/main/CLAUDE.md)
 
 	// SourceDir is the resolved path to the product config directory (set after load)
 	SourceDir string `yaml:"-"`

@@ -3,6 +3,7 @@ package static
 import (
 	"archive/tar"
 	"compress/gzip"
+	b64 "encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -87,18 +88,38 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 	result.Metadata["port_offset"] = offset
 	ctx.Printer.Info(fmt.Sprintf("  Allocated port offset: %d", offset))
 
-	// Copy CLAUDE.md from skills source
-	srcClaude := filepath.Join(srcDir, "CLAUDE.md")
+	// Install CLAUDE.md
 	dstClaude := filepath.Join(ctx.Workspace, "CLAUDE.md")
-	if _, err := os.Stat(srcClaude); err == nil {
-		if err := copyFile(srcClaude, dstClaude); err != nil {
-			result.Status = state.StatusFailed
-			result.Error = fmt.Sprintf("failed to copy CLAUDE.md: %v", err)
-			return result, fmt.Errorf("%s", result.Error)
+	claudeMDInstalled := false
+
+	// Option 1: Download from custom URL if configured
+	if ctx.ProductConfig.ClaudeMDURL != "" {
+		ctx.Printer.Info("  Downloading CLAUDE.md from custom URL...")
+		if err := downloadClaudeMD(ctx.ProductConfig.ClaudeMDURL, dstClaude); err != nil {
+			ctx.Printer.Info(fmt.Sprintf("  Warning: failed to download CLAUDE.md: %v", err))
+		} else {
+			ctx.Printer.Info("  Downloaded CLAUDE.md from custom URL")
+			claudeMDInstalled = true
 		}
-		ctx.Printer.Info("  Copied CLAUDE.md from skills repo")
-	} else {
-		ctx.Printer.Info(fmt.Sprintf("  Warning: CLAUDE.md not found at %s", srcClaude))
+	}
+
+	// Option 2: Copy from skills repo
+	if !claudeMDInstalled {
+		srcClaude := filepath.Join(srcDir, "CLAUDE.md")
+		if _, err := os.Stat(srcClaude); err == nil {
+			if err := copyFile(srcClaude, dstClaude); err != nil {
+				result.Status = state.StatusFailed
+				result.Error = fmt.Sprintf("failed to copy CLAUDE.md: %v", err)
+				return result, fmt.Errorf("%s", result.Error)
+			}
+			ctx.Printer.Info("  Copied CLAUDE.md from skills repo")
+			claudeMDInstalled = true
+		}
+	}
+
+	// Option 3: Generate minimal fallback
+	if !claudeMDInstalled {
+		ctx.Printer.Info("  Warning: CLAUDE.md not found from URL or skills repo")
 		if ctx.Printer.ConfirmProceed("  Generate a minimal CLAUDE.md instead?") {
 			content := fmt.Sprintf("# %s %s — Issue #%s\n\nPort offset: %d\nIssue: %s\n",
 				ctx.ProductConfig.Product, ctx.ProductConfig.Version,
@@ -124,6 +145,58 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 
 	result.Status = state.StatusSuccess
 	return result, nil
+}
+
+// downloadClaudeMD fetches a CLAUDE.md from a GitHub URL using gh api.
+// Accepts URLs like https://github.com/org/repo/blob/branch/path/CLAUDE.md
+func downloadClaudeMD(ghURL, destPath string) error {
+	// Convert GitHub blob URL to API path: org/repo and path
+	// e.g., https://github.com/org/repo/blob/main/CLAUDE.md
+	//     → repos/org/repo/contents/CLAUDE.md?ref=main
+	ghURL = strings.TrimSuffix(ghURL, "/")
+	parts := strings.SplitN(ghURL, "github.com/", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid GitHub URL: %s", ghURL)
+	}
+
+	// org/repo/blob/branch/path...
+	segments := strings.SplitN(parts[1], "/blob/", 2)
+	if len(segments) != 2 {
+		return fmt.Errorf("expected GitHub blob URL: %s", ghURL)
+	}
+
+	orgRepo := segments[0] // org/repo
+	branchAndPath := segments[1]
+	slashIdx := strings.Index(branchAndPath, "/")
+	if slashIdx < 0 {
+		return fmt.Errorf("no file path in URL: %s", ghURL)
+	}
+	branch := branchAndPath[:slashIdx]
+	filePath := branchAndPath[slashIdx+1:]
+
+	apiPath := fmt.Sprintf("repos/%s/contents/%s?ref=%s", orgRepo, filePath, branch)
+
+	cmd := exec.Command("gh", "api", apiPath, "--jq", ".content")
+	out, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("gh api failed: %w", err)
+	}
+
+	// GitHub API returns base64-encoded content
+	import64 := strings.TrimSpace(string(out))
+	decoded, err := base64Decode(import64)
+	if err != nil {
+		return fmt.Errorf("failed to decode content: %w", err)
+	}
+
+	return os.WriteFile(destPath, decoded, 0644)
+}
+
+func base64Decode(s string) ([]byte, error) {
+	// GitHub API returns base64 with newlines
+	s = strings.ReplaceAll(s, "\n", "")
+	s = strings.ReplaceAll(s, "\\n", "")
+	return b64.StdEncoding.DecodeString(s)
 }
 
 func (p *SkillsPhase) ExpectedArtifacts() []string {

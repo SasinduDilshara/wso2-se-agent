@@ -68,8 +68,15 @@ func LoadProductConfig(product, version string) (*ProductConfig, error) {
 	if err != nil {
 		configDir, _ := GetConfigDir()
 		productsDir := filepath.Join(configDir, "products")
-		return nil, fmt.Errorf("product config not found for %s/%s\n\nTo add a new product, create:\n  %s/%s/%s/product-config.yaml\n\nOr if this is a built-in product, run:\n  wso2-se-agent config init",
-			product, version, productsDir, product, version)
+
+		// List available products for a helpful error message
+		available := ""
+		if products, err := ListProducts(); err == nil && len(products) > 0 {
+			available = "\n\nAvailable products: " + strings.Join(products, ", ")
+		}
+
+		return nil, fmt.Errorf("product config not found for %s/%s%s\n\nTo add a new product, create:\n  %s/%s/%s/product-config.yaml",
+			product, version, available, productsDir, product, version)
 	}
 	return cfg, nil
 }

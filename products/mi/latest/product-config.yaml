@@ -20,9 +20,6 @@ repos:
   - name: vscode-extensions
     upstream: wso2/vscode-extensions
     branch: main
-  - name: docs-mi
-    upstream: wso2/docs-mi
-    branch: main
 
 build:
   pack_zip_pattern: "wso2mi-*.zip"
@@ -46,5 +43,5 @@ skip_phases: []
 
 skills_repo: "SasinduDilshara/mi-skills-docs"
 skills_branch: "main"
-generic_skills_ref: "skills"
+skills_ref: "."
 

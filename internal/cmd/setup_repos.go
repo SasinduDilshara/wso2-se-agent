@@ -85,10 +85,11 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 		}
 
 		// Step 1: Ask if they have an existing local clone
-		fmt.Print("  Do you have an existing local clone? [y/N] ")
+		fmt.Print("  Do you have an existing local clone? [Y/n] ")
 		text, _ := reader.ReadString('\n')
+		text = strings.TrimSpace(strings.ToLower(text))
 
-		if strings.TrimSpace(strings.ToLower(text)) == "y" {
+		if text == "" || text == "y" || text == "yes" {
 			localPath := askForPath(reader, repo.Name)
 			if localPath == "" {
 				fmt.Println("  Skipped.")

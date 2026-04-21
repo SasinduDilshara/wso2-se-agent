@@ -276,6 +276,119 @@ skills_ref: "api-manager-specific/v4"
 	}
 }
 
+func TestStaticPhaseScripts(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	defer env.Cleanup()
+
+	// Create fake git repos
+	carbonPath := env.CreateFakeRepo("carbon-apimgt", "master")
+	productPath := env.CreateFakeRepo("product-apim", "master")
+
+	env.WriteConfig(fmt.Sprintf(`
+github_username: testuser
+risk_threshold: 7
+max_budget_usd: 15.0
+log_level: info
+workspace_root: %s
+`, env.WorkspaceDir))
+
+	env.WriteRepos(fmt.Sprintf(`
+repos:
+  carbon-apimgt:
+    local_path: %s
+    fork: testuser/carbon-apimgt
+    upstream: wso2/carbon-apimgt
+  product-apim:
+    local_path: %s
+    fork: testuser/product-apim
+    upstream: wso2/product-apim
+`, carbonPath, productPath))
+
+	tarball := env.CreateSkillsTarball()
+	os.Setenv("WSE_MOCK_GH_TARBALL", tarball)
+	defer os.Unsetenv("WSE_MOCK_GH_TARBALL")
+
+	env.WriteProductConfig("apim", "latest", `
+product: apim
+version: latest
+repos:
+  - name: carbon-apimgt
+    upstream: wso2/carbon-apimgt
+    branch: master
+  - name: product-apim
+    upstream: wso2/product-apim
+    branch: master
+build:
+  pack_zip_pattern: "wso2am-*.zip"
+runtime:
+  startup_command: "sh api-manager.sh"
+  health_check_log: "Mgt Console URL"
+  default_ports: [19443]
+  startup_timeout_seconds: 10
+phase_limits:
+  reproduce: 5.0
+skills_repo: "Tharsanan1/wso2-se-agent-skills"
+skills_branch: "main"
+skills_ref: "api-manager-specific/v4"
+`)
+
+	// Write pre/post scripts for static phases
+	env.WriteScript("apim", "latest", "workspace.post.sh", `#!/bin/bash
+echo "workspace post-script running"
+touch "$WSE_WORKSPACE/workspace-post-marker.txt"
+`)
+
+	env.WriteScript("apim", "latest", "skills.pre.sh", `#!/bin/bash
+echo "skills pre-script running"
+touch "$WSE_WORKSPACE/skills-pre-marker.txt"
+`)
+
+	packPath := filepath.Join(env.RootDir, "wso2am-test.zip")
+	os.WriteFile(packPath, []byte("fake-zip"), 0644)
+
+	binPath := buildCLI(t)
+
+	cmd := exec.Command(binPath, "run",
+		"--product", "apim",
+		"--version", "latest",
+		"--issue", "https://github.com/wso2/product-apim/issues/4856",
+		"--pack", packPath,
+		"--from", "prereq",
+		"--to", "skills",
+		"--yes",
+	)
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"PATH="+env.MocksDir+":"+env.OrigPath,
+		"WSE_MOCK_GH_TARBALL="+tarball,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("CLI failed: %v\n%s", err, string(output))
+	}
+
+	outputStr := string(output)
+
+	// Verify scripts ran
+	if !strings.Contains(outputStr, "workspace.post.sh") {
+		t.Error("expected workspace post-script to run")
+	}
+	if !strings.Contains(outputStr, "skills.pre.sh") {
+		t.Error("expected skills pre-script to run")
+	}
+
+	// Verify marker files were created by scripts
+	wsPath := filepath.Join(env.WorkspaceDir, "apim-issues-4856")
+	if _, err := os.Stat(filepath.Join(wsPath, "workspace-post-marker.txt")); os.IsNotExist(err) {
+		t.Error("workspace.post.sh did not create marker file")
+	}
+	if _, err := os.Stat(filepath.Join(wsPath, "skills-pre-marker.txt")); os.IsNotExist(err) {
+		t.Error("skills.pre.sh did not create marker file")
+	}
+}
+
 func TestReproducePhase_WithMockClaude(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	defer env.Cleanup()

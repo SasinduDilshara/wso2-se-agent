@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'products/**'
+      - 'embed.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+
+jobs:
+  release:
+    name: Tag and release
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build probe binary (deterministic, no version)
+        run: |
+          mkdir -p probe
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -buildvcs=false \
+              -ldflags "-s -w -X main.version=probe" \
+              -o probe/wso2-se-agent \
+              ./cmd/wso2-se-agent/
+          sha256sum probe/wso2-se-agent | awk '{print $1}' > probe/SHA256SUM
+          echo "current=$(cat probe/SHA256SUM)" >> "$GITHUB_ENV"
+          echo "Current probe hash: $(cat probe/SHA256SUM)"
+
+      - name: Fetch previous release hash
+        id: prev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest=$(git tag -l 'v*.*.*' | sort -V | tail -n1)
+          echo "latest_tag=${latest}" >> "$GITHUB_OUTPUT"
+          if [ -z "$latest" ]; then
+            echo "No previous release; will release."
+            echo "previous=" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if gh release download "$latest" -p 'SHA256SUM' -D prev 2>/dev/null; then
+            prev_hash=$(cat prev/SHA256SUM)
+            echo "previous=${prev_hash}" >> "$GITHUB_ENV"
+            echo "Previous probe hash: ${prev_hash}"
+          else
+            echo "Previous release has no SHA256SUM asset; will release."
+            echo "previous=" >> "$GITHUB_ENV"
+          fi
+
+      - name: Compare hashes
+        id: compare
+        run: |
+          if [ -n "$previous" ] && [ "$current" = "$previous" ]; then
+            echo "Binary unchanged; skipping release."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Binary changed; proceeding with release."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        if: steps.compare.outputs.changed == 'true'
+        id: version
+        env:
+          LATEST: ${{ steps.prev.outputs.latest_tag }}
+        run: |
+          if [ -z "$LATEST" ]; then
+            next="v0.1.0"
+          else
+            IFS='.' read -r major minor patch <<< "${LATEST#v}"
+            next="v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "tag=${next}" >> "$GITHUB_OUTPUT"
+          echo "Next version: ${next}"
+
+      - name: Create and push tag
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Build release binaries
+        if: steps.compare.outputs.changed == 'true'
+        run: make release
+
+      - name: Create GitHub release
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            bin/wso2-se-agent-darwin-arm64 \
+            bin/wso2-se-agent-darwin-amd64 \
+            bin/wso2-se-agent-linux-amd64 \
+            probe/SHA256SUM

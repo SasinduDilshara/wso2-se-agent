@@ -79,6 +79,104 @@ func TestLoadGlobalConfigDefaults(t *testing.T) {
 	}
 }
 
+func TestGetConfigDirEnvOverride(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	origEnv := os.Getenv(ConfigDirEnvVar)
+	defer os.Setenv("HOME", origHome)
+	defer os.Setenv(ConfigDirEnvVar, origEnv)
+
+	homeDir := t.TempDir()
+	customDir := t.TempDir()
+	os.Setenv("HOME", homeDir)
+
+	// Without the env var, config dir is derived from HOME.
+	os.Unsetenv(ConfigDirEnvVar)
+	dir, err := GetConfigDir()
+	if err != nil {
+		t.Fatalf("GetConfigDir: %v", err)
+	}
+	if want := filepath.Join(homeDir, ConfigDirName); dir != want {
+		t.Errorf("default config dir: got %q, want %q", dir, want)
+	}
+
+	// With the env var, it wins over HOME.
+	os.Setenv(ConfigDirEnvVar, customDir)
+	dir, err = GetConfigDir()
+	if err != nil {
+		t.Fatalf("GetConfigDir: %v", err)
+	}
+	if dir != customDir {
+		t.Errorf("overridden config dir: got %q, want %q", dir, customDir)
+	}
+
+	// Derived paths also pick up the override.
+	cfgPath, err := GetConfigFilePath()
+	if err != nil {
+		t.Fatalf("GetConfigFilePath: %v", err)
+	}
+	if want := filepath.Join(customDir, "config.yaml"); cfgPath != want {
+		t.Errorf("config file path: got %q, want %q", cfgPath, want)
+	}
+	reposPath, err := GetReposFilePath()
+	if err != nil {
+		t.Fatalf("GetReposFilePath: %v", err)
+	}
+	if want := filepath.Join(customDir, "repos.yaml"); reposPath != want {
+		t.Errorf("repos file path: got %q, want %q", reposPath, want)
+	}
+
+	// Empty env var falls back to HOME default.
+	os.Setenv(ConfigDirEnvVar, "")
+	dir, err = GetConfigDir()
+	if err != nil {
+		t.Fatalf("GetConfigDir: %v", err)
+	}
+	if want := filepath.Join(homeDir, ConfigDirName); dir != want {
+		t.Errorf("empty env var should fall back: got %q, want %q", dir, want)
+	}
+}
+
+func TestSaveAndLoadConfigWithEnvOverride(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	origEnv := os.Getenv(ConfigDirEnvVar)
+	defer os.Setenv("HOME", origHome)
+	defer os.Setenv(ConfigDirEnvVar, origEnv)
+
+	// Point HOME to an empty temp dir, and the override to a separate one.
+	os.Setenv("HOME", t.TempDir())
+	customDir := t.TempDir()
+	os.Setenv(ConfigDirEnvVar, customDir)
+
+	cfg := &GlobalConfig{
+		GitHubUsername: "env-override-user",
+		RiskThreshold:  6,
+		MaxBudgetUSD:   12.5,
+		LogLevel:       "debug",
+		ClaudeModel:    "opus",
+		WorkspaceRoot:  "/tmp/env-override",
+	}
+	if err := SaveGlobalConfig(cfg); err != nil {
+		t.Fatalf("SaveGlobalConfig: %v", err)
+	}
+
+	// File must land in the override dir, not HOME.
+	if _, err := os.Stat(filepath.Join(customDir, "config.yaml")); err != nil {
+		t.Fatalf("config file not written to override dir: %v", err)
+	}
+	homeCfg := filepath.Join(os.Getenv("HOME"), ConfigDirName, "config.yaml")
+	if _, err := os.Stat(homeCfg); !os.IsNotExist(err) {
+		t.Errorf("config file should NOT exist under HOME (%s): err=%v", homeCfg, err)
+	}
+
+	loaded, err := LoadGlobalConfig()
+	if err != nil {
+		t.Fatalf("LoadGlobalConfig: %v", err)
+	}
+	if loaded.GitHubUsername != "env-override-user" {
+		t.Errorf("GitHubUsername: got %q, want %q", loaded.GitHubUsername, "env-override-user")
+	}
+}
+
 func TestSaveAndLoadRepoRegistry(t *testing.T) {
 	origHome := os.Getenv("HOME")
 	os.Setenv("HOME", t.TempDir())

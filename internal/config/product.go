@@ -78,6 +78,14 @@ func LoadProductConfig(product, version string) (*ProductConfig, error) {
 		return nil, fmt.Errorf("product config not found for %s/%s%s\n\nTo add a new product, create:\n  %s/%s/%s/product-config.yaml",
 			product, version, available, productsDir, product, version)
 	}
+
+	// Auto-extract embedded scripts to local config dir so they can be executed
+	if err := extractEmbeddedScripts(product, version); err == nil {
+		configDir, _ := GetConfigDir()
+		localDir := filepath.Join(configDir, "products", product, version)
+		cfg.SourceDir = localDir
+	}
+
 	return cfg, nil
 }
 
@@ -157,6 +165,52 @@ func CopyEmbeddedProducts(force bool) error {
 		}
 		return os.WriteFile(destPath, data, perm)
 	})
+}
+
+// extractEmbeddedScripts extracts scripts from the embedded FS to the local config dir.
+// Existing scripts are not overwritten.
+func extractEmbeddedScripts(product, version string) error {
+	configDir, err := EnsureConfigDir()
+	if err != nil {
+		return err
+	}
+
+	scriptsPrefix := filepath.Join("products", product, version, "scripts")
+	entries, err := fs.ReadDir(ProductsFS, scriptsPrefix)
+	if err != nil {
+		return nil // no scripts directory in embedded, that's fine
+	}
+
+	localScriptsDir := filepath.Join(configDir, "products", product, version, "scripts")
+	if err := os.MkdirAll(localScriptsDir, 0755); err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		destPath := filepath.Join(localScriptsDir, entry.Name())
+
+		// Don't overwrite existing scripts
+		if _, err := os.Stat(destPath); err == nil {
+			continue
+		}
+
+		data, err := ProductsFS.ReadFile(filepath.Join(scriptsPrefix, entry.Name()))
+		if err != nil {
+			continue
+		}
+
+		perm := os.FileMode(0644)
+		if strings.HasSuffix(entry.Name(), ".sh") {
+			perm = 0755
+		}
+		os.WriteFile(destPath, data, perm)
+	}
+
+	return nil
 }
 
 // ListLocalProducts lists products from the local config dir.

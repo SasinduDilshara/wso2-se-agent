@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/Tharsanan1/wso2-se-agent/internal/script"
 	"github.com/Tharsanan1/wso2-se-agent/internal/state"
 )
 
@@ -28,6 +29,15 @@ func (e *Engine) Run(ctx *PhaseContext, phases []Phase) error {
 		if err := p.Preconditions(ctx); err != nil {
 			ctx.Printer.PhaseFailed(p.Name(), fmt.Sprintf("precondition failed: %v", err))
 			return fmt.Errorf("phase %s precondition failed: %w", p.Name(), err)
+		}
+
+		// Run pre-script
+		if preScript := findScript(ctx, p.Name(), "pre"); preScript != "" {
+			ctx.Printer.Info(fmt.Sprintf("  Running pre-script: %s", filepath.Base(preScript)))
+			if err := script.Run(preScript, scriptEnv(ctx), 5*time.Minute); err != nil {
+				ctx.Printer.PhaseFailed(p.Name(), fmt.Sprintf("pre-script failed: %v", err))
+				return fmt.Errorf("phase %s pre-script failed: %w", p.Name(), err)
+			}
 		}
 
 		// Execute
@@ -82,6 +92,15 @@ func (e *Engine) Run(ctx *PhaseContext, phases []Phase) error {
 			return fmt.Errorf("phase %s failed: %s", p.Name(), result.Error)
 		}
 
+		// Run post-script
+		if postScript := findScript(ctx, p.Name(), "post"); postScript != "" {
+			ctx.Printer.Info(fmt.Sprintf("  Running post-script: %s", filepath.Base(postScript)))
+			if err := script.Run(postScript, scriptEnv(ctx), 5*time.Minute); err != nil {
+				ctx.Printer.PhaseFailed(p.Name(), fmt.Sprintf("post-script failed: %v", err))
+				return fmt.Errorf("phase %s post-script failed: %w", p.Name(), err)
+			}
+		}
+
 		ctx.Printer.PhaseSuccess(p.Name(), phaseMessage(p.Name(), result))
 
 		// Risk gate (special handling after risk-assessment)
@@ -125,4 +144,24 @@ func nextPhaseName(phases []Phase, currentIdx int) string {
 		return phases[currentIdx+1].Name()
 	}
 	return "done"
+}
+
+func findScript(ctx *PhaseContext, phaseName, timing string) string {
+	scriptName := fmt.Sprintf("%s.%s.sh", phaseName, timing)
+	path := filepath.Join(ctx.ProductConfig.SourceDir, "scripts", scriptName)
+	if script.Exists(path) {
+		return path
+	}
+	return ""
+}
+
+func scriptEnv(ctx *PhaseContext) script.EnvVars {
+	return script.EnvVars{
+		Workspace:   ctx.Workspace,
+		IssueNumber: ctx.IssueNumber,
+		IssueURL:    ctx.IssueURL,
+		Product:     ctx.ProductConfig.Product,
+		Version:     ctx.ProductConfig.Version,
+		StateFile:   filepath.Join(ctx.Workspace, ".wse", "state.json"),
+	}
 }

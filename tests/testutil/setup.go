@@ -184,6 +184,18 @@ func (e *TestEnv) WriteProductConfig(product, version, content string) {
 	}
 }
 
+// WriteScript writes a phase script to the product config scripts dir.
+func (e *TestEnv) WriteScript(product, version, scriptName, content string) {
+	e.T.Helper()
+	dir := filepath.Join(e.ConfigDir, "products", product, version, "scripts")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		e.T.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, scriptName), []byte(content), 0755); err != nil {
+		e.T.Fatal(err)
+	}
+}
+
 func findProjectRoot(t *testing.T) string {
 	t.Helper()
 	// Walk up from the current working directory looking for go.mod

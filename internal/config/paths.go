@@ -7,8 +7,12 @@ import (
 
 const AppName = "wso2-se-agent"
 const ConfigDirName = ".wso2-se-agent"
+const ConfigDirEnvVar = "WSE_CONFIG_DIR"
 
 func GetConfigDir() (string, error) {
+	if dir := os.Getenv(ConfigDirEnvVar); dir != "" {
+		return dir, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

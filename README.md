@@ -87,6 +87,8 @@ GitHub username is auto-detected from `gh`. No `config init` needed — sensible
 
 Configuration is optional. The CLI works with sensible defaults out of the box.
 
+Set `WSE_CONFIG_DIR` to override the config directory location (useful for isolated/test setups). The default is `~/.wso2-se-agent/`.
+
 To customize settings, run `wso2-se-agent config init` or edit files directly:
 
 ```

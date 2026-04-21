@@ -506,6 +506,87 @@ max_budget_usd: 20.0
 	}
 }
 
+func TestConfigShow_RespectsWSEConfigDirEnv(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	defer env.Cleanup()
+
+	// Write a config under the default HOME-based location with one username,
+	// and a second config under a custom WSE_CONFIG_DIR location with a
+	// different username. The CLI must read from the override path.
+	env.WriteConfig(`
+github_username: home-user
+risk_threshold: 3
+max_budget_usd: 5.0
+`)
+
+	customDir := filepath.Join(env.RootDir, "custom-config-dir")
+	if err := os.MkdirAll(customDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	overrideYAML := `
+github_username: override-user
+risk_threshold: 9
+max_budget_usd: 42.0
+`
+	if err := os.WriteFile(filepath.Join(customDir, "config.yaml"), []byte(overrideYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	binPath := buildCLI(t)
+
+	cmd := exec.Command(binPath, "config", "show")
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"WSE_CONFIG_DIR="+customDir,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("CLI failed: %v\n%s", err, string(output))
+	}
+
+	outStr := string(output)
+	if !strings.Contains(outStr, "override-user") {
+		t.Errorf("expected override-user (from WSE_CONFIG_DIR), got:\n%s", outStr)
+	}
+	if strings.Contains(outStr, "home-user") {
+		t.Errorf("should not have read HOME config when WSE_CONFIG_DIR is set, got:\n%s", outStr)
+	}
+	if !strings.Contains(outStr, "42.00") {
+		t.Errorf("expected override budget 42.00, got:\n%s", outStr)
+	}
+}
+
+func TestConfigInit_WritesToWSEConfigDir(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	defer env.Cleanup()
+
+	customDir := filepath.Join(env.RootDir, "custom-init-dir")
+	binPath := buildCLI(t)
+
+	cmd := exec.Command(binPath, "config", "init")
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"WSE_CONFIG_DIR="+customDir,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("CLI failed: %v\n%s", err, string(output))
+	}
+
+	// Config must land in the override dir, not under HOME's default path.
+	if _, err := os.Stat(filepath.Join(customDir, "config.yaml")); err != nil {
+		t.Errorf("config.yaml not written to WSE_CONFIG_DIR (%s): %v\n%s", customDir, err, string(output))
+	}
+	defaultPath := filepath.Join(env.RootDir, ".wso2-se-agent", "config.yaml")
+	if _, err := os.Stat(defaultPath); err == nil {
+		t.Errorf("config.yaml should NOT exist at default HOME path %s when WSE_CONFIG_DIR is set", defaultPath)
+	}
+}
+
 // buildCLI compiles the CLI binary once and caches it in a persistent temp dir.
 var cachedBinPath string
 

@@ -47,7 +47,9 @@ func LoadGlobalConfig() (*GlobalConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return DefaultGlobalConfig(), nil
+			cfg := DefaultGlobalConfig()
+			cfg.GitHubUsername = detectGitHubUsername()
+			return cfg, nil
 		}
 		return nil, err
 	}

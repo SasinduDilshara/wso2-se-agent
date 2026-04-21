@@ -69,6 +69,30 @@ func runConfigInit(cmd *cobra.Command, args []string) error {
 		cfg.WorkspaceRoot = wsRoot
 	}
 
+	// Prompt for generic skills repo
+	fmt.Printf("Generic skills repo (org/repo, empty to skip) [%s]: ", cfg.GenericSkillsRepo)
+	gsRepo, _ := reader.ReadString('\n')
+	gsRepo = strings.TrimSpace(gsRepo)
+	if gsRepo != "" {
+		cfg.GenericSkillsRepo = gsRepo
+	}
+
+	if cfg.GenericSkillsRepo != "" {
+		fmt.Printf("Generic skills branch [%s]: ", cfg.GenericSkillsBranch)
+		gsBranch, _ := reader.ReadString('\n')
+		gsBranch = strings.TrimSpace(gsBranch)
+		if gsBranch != "" {
+			cfg.GenericSkillsBranch = gsBranch
+		}
+
+		fmt.Printf("Generic skills path in repo [%s]: ", cfg.GenericSkillsRef)
+		gsRef, _ := reader.ReadString('\n')
+		gsRef = strings.TrimSpace(gsRef)
+		if gsRef != "" {
+			cfg.GenericSkillsRef = gsRef
+		}
+	}
+
 	// Save global config
 	if err := config.SaveGlobalConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
@@ -112,6 +136,14 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("log_level:        %s\n", cfg.LogLevel)
 	fmt.Printf("claude_model:     %s\n", cfg.ClaudeModel)
 	fmt.Printf("workspace_root:   %s\n", cfg.WorkspaceRoot)
+	fmt.Printf("\nGeneric skills:\n")
+	if cfg.GenericSkillsRepo != "" {
+		fmt.Printf("  repo:           %s\n", cfg.GenericSkillsRepo)
+		fmt.Printf("  branch:         %s\n", cfg.GenericSkillsBranch)
+		fmt.Printf("  ref:            %s\n", cfg.GenericSkillsRef)
+	} else {
+		fmt.Printf("  (not configured)\n")
+	}
 
 	// Show available products from local config dir
 	fmt.Printf("\nProduct configs: %s/products/\n", configDir)

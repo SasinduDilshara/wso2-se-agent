@@ -41,10 +41,9 @@ type ProductConfig struct {
 	Runtime      RuntimeConfig      `yaml:"runtime"`
 	PhaseLimits  map[string]float64 `yaml:"phase_limits"`
 	SkipPhases   []string           `yaml:"skip_phases"`
-	SkillsRepo       string             `yaml:"skills_repo"`         // GitHub org/repo
-	SkillsBranch     string             `yaml:"skills_branch"`       // branch/tag/commit
-	SkillsRef        string             `yaml:"skills_ref"`          // product-specific skills path within repo
-	GenericSkillsRef string             `yaml:"generic_skills_ref"`  // generic skills path within repo (default: "skills")
+	SkillsRepo   string `yaml:"skills_repo"`   // GitHub org/repo for product-specific skills
+	SkillsBranch string `yaml:"skills_branch"` // branch/tag/commit
+	SkillsRef    string `yaml:"skills_ref"`    // product-specific skills path within repo
 
 	// SourceDir is the resolved path to the product config directory (set after load)
 	SourceDir string `yaml:"-"`

@@ -8,23 +8,29 @@ import (
 )
 
 type GlobalConfig struct {
-	GitHubUsername string  `yaml:"github_username"`
-	RiskThreshold  int     `yaml:"risk_threshold"`
-	MaxBudgetUSD   float64 `yaml:"max_budget_usd"`
-	LogLevel       string  `yaml:"log_level"`
-	ClaudeModel    string  `yaml:"claude_model"`
-	WorkspaceRoot  string  `yaml:"workspace_root"`
+	GitHubUsername    string  `yaml:"github_username"`
+	RiskThreshold    int     `yaml:"risk_threshold"`
+	MaxBudgetUSD     float64 `yaml:"max_budget_usd"`
+	LogLevel         string  `yaml:"log_level"`
+	ClaudeModel      string  `yaml:"claude_model"`
+	WorkspaceRoot    string  `yaml:"workspace_root"`
+	GenericSkillsRepo   string `yaml:"generic_skills_repo"`
+	GenericSkillsBranch string `yaml:"generic_skills_branch"`
+	GenericSkillsRef    string `yaml:"generic_skills_ref"`
 }
 
 func DefaultGlobalConfig() *GlobalConfig {
 	home, _ := os.UserHomeDir()
 	return &GlobalConfig{
-		GitHubUsername: "",
-		RiskThreshold:  7,
-		MaxBudgetUSD:   15.0,
-		LogLevel:       "info",
-		ClaudeModel:    "",
-		WorkspaceRoot:  filepath.Join(home, "wse-workspaces"),
+		GitHubUsername:      "",
+		RiskThreshold:       7,
+		MaxBudgetUSD:        15.0,
+		LogLevel:            "info",
+		ClaudeModel:         "",
+		WorkspaceRoot:       filepath.Join(home, "wse-workspaces"),
+		GenericSkillsRepo:   "",
+		GenericSkillsBranch: "main",
+		GenericSkillsRef:    "skills",
 	}
 }
 

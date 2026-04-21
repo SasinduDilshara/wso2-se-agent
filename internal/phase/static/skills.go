@@ -36,34 +36,42 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 		Metadata: make(map[string]any),
 	}
 
-	// Resolve the skills source directory
-	skillsLocalPath, err := resolveSkillsPath(ctx)
-	if err != nil {
-		result.Status = state.StatusFailed
-		result.Error = err.Error()
-		return result, err
-	}
-
-	skillsRef := ctx.ProductConfig.SkillsRef
-	srcDir := filepath.Join(skillsLocalPath, skillsRef)
 	dstSkillsDir := filepath.Join(ctx.Workspace, ".claude", "skills")
 
-	// Copy generic skills first (skills/ at repo root)
-	genericRef := ctx.ProductConfig.GenericSkillsRef
-	if genericRef == "" {
-		genericRef = "skills"
-	}
-	genericSkillsDir := filepath.Join(skillsLocalPath, genericRef)
-	if _, err := os.Stat(genericSkillsDir); err == nil {
-		if err := copyDir(genericSkillsDir, dstSkillsDir); err != nil {
+	// Copy generic skills from global config (separate repo)
+	gcfg := ctx.GlobalConfig
+	if gcfg.GenericSkillsRepo != "" {
+		genericLocalPath, err := downloadSkillsRepo(gcfg.GenericSkillsRepo, gcfg.GenericSkillsBranch)
+		if err != nil {
 			result.Status = state.StatusFailed
-			result.Error = fmt.Sprintf("failed to copy generic skills: %v", err)
+			result.Error = fmt.Sprintf("failed to download generic skills repo: %v", err)
 			return result, fmt.Errorf("%s", result.Error)
 		}
-		ctx.Printer.Info("  Installed generic skills")
+		genericRef := gcfg.GenericSkillsRef
+		if genericRef == "" {
+			genericRef = "skills"
+		}
+		genericSkillsDir := filepath.Join(genericLocalPath, genericRef)
+		if _, err := os.Stat(genericSkillsDir); err == nil {
+			if err := copyDir(genericSkillsDir, dstSkillsDir); err != nil {
+				result.Status = state.StatusFailed
+				result.Error = fmt.Sprintf("failed to copy generic skills: %v", err)
+				return result, fmt.Errorf("%s", result.Error)
+			}
+			ctx.Printer.Info("  Installed generic skills")
+		}
 	}
 
 	// Copy product-specific skills (override generic ones if same name)
+	productLocalPath, err := downloadSkillsRepo(ctx.ProductConfig.SkillsRepo, ctx.ProductConfig.SkillsBranch)
+	if err != nil {
+		result.Status = state.StatusFailed
+		result.Error = fmt.Sprintf("failed to download product skills repo: %v", err)
+		return result, fmt.Errorf("%s", result.Error)
+	}
+
+	skillsRef := ctx.ProductConfig.SkillsRef
+	srcDir := filepath.Join(productLocalPath, skillsRef)
 	srcSkillsDir := filepath.Join(srcDir, "skills")
 	if _, err := os.Stat(srcSkillsDir); err == nil {
 		if err := copyDir(srcSkillsDir, dstSkillsDir); err != nil {
@@ -122,15 +130,7 @@ func (p *SkillsPhase) ExpectedArtifacts() []string {
 	return []string{}
 }
 
-// resolveSkillsPath returns the local path to the skills repo contents.
-// Downloads the tarball from GitHub and caches it.
-func resolveSkillsPath(ctx *phase.PhaseContext) (string, error) {
-	return downloadSkillsRepo(ctx.ProductConfig)
-}
-
-func downloadSkillsRepo(pcfg *configpkg.ProductConfig) (string, error) {
-	repo := pcfg.SkillsRepo
-	branch := pcfg.SkillsBranch
+func downloadSkillsRepo(repo, branch string) (string, error) {
 	if branch == "" {
 		branch = "main"
 	}

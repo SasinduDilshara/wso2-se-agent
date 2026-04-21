@@ -193,7 +193,6 @@ phase_limits:
 skills_repo: "Tharsanan1/wso2-se-agent-skills"
 skills_branch: "main"
 skills_ref: "api-manager-specific/v4"
-generic_skills_ref: "skills"
 `))
 
 	// Create a dummy pack file
@@ -311,7 +310,6 @@ phase_limits:
 skills_repo: "test/test"
 skills_branch: "main"
 skills_ref: "test"
-generic_skills_ref: "skills"
 `)
 
 	binPath := buildCLI(t)

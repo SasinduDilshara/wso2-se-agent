@@ -162,13 +162,16 @@ Five methods. That's it. Adding a phase means implementing the interface and app
    g. If this phase is `risk-assessment`, check the gate (section 8).
    h. If not `--yes`, prompt the user to continue to the next phase.
 
-Pre/post scripts get these env vars:
+Pre/post scripts get these env vars (all prefixed `WSE_`):
 
 ```
-WORKSPACE, ISSUE_NUMBER, ISSUE_URL, PRODUCT, VERSION, STATE_FILE
+WSE_WORKSPACE, WSE_ISSUE_NUMBER, WSE_ISSUE_URL,
+WSE_PRODUCT, WSE_VERSION, WSE_PORT_OFFSET, WSE_STATE_FILE
 ```
 
-This is the hook surface for product-specific setup that doesn't belong in Go (starting a DB, custom cleanups, etc.).
+Scripts run with `cwd = <workspace>` under `sh`, with a 5-minute timeout. **Non-zero exit halts the pipeline** — pre-hook failure means the phase's `Execute` never runs; post-hook failure means the phase is saved as success in `state.json` but the next phase won't start. Print to stderr before exiting to surface the reason.
+
+This is the hook surface for product-specific setup that doesn't belong in Go (starting a DB, custom cleanups, product-specific tool checks, etc.).
 
 ---
 

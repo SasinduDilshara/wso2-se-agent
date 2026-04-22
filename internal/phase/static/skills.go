@@ -6,7 +6,6 @@ import (
 	b64 "encoding/base64"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -100,10 +99,10 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 		}
 	}
 
-	// Allocate port offset
-	offset := findFreePortOffset(ctx.ProductConfig.Runtime.DefaultPorts)
-	result.Metadata["port_offset"] = offset
-	ctx.Printer.Info(fmt.Sprintf("  Allocated port offset: %d", offset))
+	// Read the port offset allocated by the workspace phase (used below if we
+	// fall back to generating a minimal CLAUDE.md). hasOffset is false when the
+	// workspace phase didn't allocate one (e.g. pick_port_offset: false).
+	offset, hasOffset := portOffsetFromState(ctx.State)
 
 	// Install CLAUDE.md
 	dstClaude := filepath.Join(ctx.Workspace, "CLAUDE.md")
@@ -138,9 +137,12 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 	if !claudeMDInstalled {
 		ctx.Printer.Info("  Warning: CLAUDE.md not found from URL or skills repo")
 		if ctx.Printer.ConfirmProceed("  Generate a minimal CLAUDE.md instead?") {
-			content := fmt.Sprintf("# %s %s — Issue #%s\n\nPort offset: %d\nIssue: %s\n",
+			content := fmt.Sprintf("# %s %s — Issue #%s\n\nIssue: %s\n",
 				ctx.ProductConfig.Product, ctx.ProductConfig.Version,
-				ctx.IssueNumber, offset, ctx.IssueURL)
+				ctx.IssueNumber, ctx.IssueURL)
+			if hasOffset {
+				content += renderPortOffsetBlock(offset, ctx.ProductConfig.Runtime.DefaultPorts)
+			}
 			if err := os.WriteFile(dstClaude, []byte(content), 0644); err != nil {
 				result.Status = state.StatusFailed
 				result.Error = fmt.Sprintf("failed to write CLAUDE.md: %v", err)
@@ -346,23 +348,48 @@ func extractTarball(tarballPath, destDir string) error {
 	return nil
 }
 
-func findFreePortOffset(defaultPorts []int) int {
-	for offset := 0; offset <= 200; offset += 10 {
-		allFree := true
-		for _, port := range defaultPorts {
-			addr := fmt.Sprintf(":%d", port+offset)
-			ln, err := net.Listen("tcp", addr)
-			if err != nil {
-				allFree = false
-				break
-			}
-			ln.Close()
+// renderPortOffsetBlock returns a Markdown block describing the allocated port
+// offset in enough detail for Claude to apply it correctly — what value was
+// picked, how to pass it to the server, and what the shifted ports are.
+func renderPortOffsetBlock(offset int, defaultPorts []int) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n## Port Offset\n\n")
+	fmt.Fprintf(&b, "A port offset of **%d** has been allocated for this workspace to avoid conflicts with other running WSO2 servers on this machine.\n\n", offset)
+	fmt.Fprintf(&b, "- Pass `-DportOffset=%d` when starting the server (or set `Ports.Offset` in `repository/conf/carbon.xml`).\n", offset)
+	if len(defaultPorts) > 0 {
+		pairs := make([]string, 0, len(defaultPorts))
+		for _, p := range defaultPorts {
+			pairs = append(pairs, fmt.Sprintf("%d → %d", p, p+offset))
 		}
-		if allFree {
-			return offset
-		}
+		fmt.Fprintf(&b, "- All default ports are shifted by %d: %s.\n", offset, strings.Join(pairs, ", "))
 	}
-	return 0
+	fmt.Fprintf(&b, "- Use the shifted ports for curl, health checks, API calls, and any docs or test code you generate. Do NOT use the default ports.\n")
+	return b.String()
+}
+
+// portOffsetFromState returns the port offset allocated by the workspace phase.
+// The second return is false when no offset was allocated (e.g. when
+// pick_port_offset is false or the workspace phase hasn't run yet).
+func portOffsetFromState(s *state.WorkspaceState) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	ws, ok := s.Phases["workspace"]
+	if !ok || ws == nil || ws.Metadata == nil {
+		return 0, false
+	}
+	v, ok := ws.Metadata["port_offset"]
+	if !ok {
+		return 0, false
+	}
+	switch n := v.(type) {
+	case int:
+		return n, true
+	case float64:
+		return int(n), true
+	default:
+		return 0, false
+	}
 }
 
 func copyDir(src, dst string) error {

@@ -20,4 +20,24 @@ cat >> "$CLAUDE_MD" <<EOF
 - Docker platform: $DOCKER_ARCH
 EOF
 
+if [ -n "${WSE_PORT_OFFSET:-}" ]; then
+  OFFSET="$WSE_PORT_OFFSET"
+  cat >> "$CLAUDE_MD" <<EOF
+
+## Port Offset
+
+A port offset of **$OFFSET** has been allocated for this workspace to avoid
+conflicts with other running WSO2 servers on this machine.
+
+- Pass \`-DportOffset=$OFFSET\` when starting the server (or set \`Ports.Offset\`
+  in \`repository/conf/carbon.xml\`).
+- All default ports are shifted by $OFFSET:
+  9443 → $((9443 + OFFSET)), 9763 → $((9763 + OFFSET)),
+  8280 → $((8280 + OFFSET)), 8243 → $((8243 + OFFSET)),
+  5672 → $((5672 + OFFSET)).
+- Use the shifted ports for curl, health checks, API calls, and any docs
+  or test code you generate. Do NOT use the default ports.
+EOF
+fi
+
 echo "  Appended system info to CLAUDE.md"

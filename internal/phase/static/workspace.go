@@ -3,6 +3,7 @@ package static
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -118,8 +119,37 @@ func (p *WorkspacePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, e
 		}
 	}
 
+	// Allocate a free port offset for this workspace. The offset is added to every
+	// default port the product listens on so concurrent runs don't collide, and is
+	// exposed to pre/post hooks as WSE_PORT_OFFSET by the engine. Skipped when
+	// pick_port_offset is false in product config.
+	if ctx.ProductConfig.Runtime.ShouldPickPortOffset() {
+		offset := findFreePortOffset(ctx.ProductConfig.Runtime.DefaultPorts)
+		result.Metadata["port_offset"] = offset
+		ctx.Printer.Info(fmt.Sprintf("  Allocated port offset: %d", offset))
+	}
+
 	result.Status = state.StatusSuccess
 	return result, nil
+}
+
+func findFreePortOffset(defaultPorts []int) int {
+	for offset := 0; offset <= 200; offset += 10 {
+		allFree := true
+		for _, port := range defaultPorts {
+			addr := fmt.Sprintf(":%d", port+offset)
+			ln, err := net.Listen("tcp", addr)
+			if err != nil {
+				allFree = false
+				break
+			}
+			ln.Close()
+		}
+		if allFree {
+			return offset
+		}
+	}
+	return 0
 }
 
 func copyFileWS(src, dst string) error {

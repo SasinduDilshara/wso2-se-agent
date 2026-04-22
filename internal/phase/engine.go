@@ -162,6 +162,28 @@ func scriptEnv(ctx *PhaseContext) script.EnvVars {
 		IssueURL:    ctx.IssueURL,
 		Product:     ctx.ProductConfig.Product,
 		Version:     ctx.ProductConfig.Version,
+		PortOffset:  portOffsetFromState(ctx.State),
 		StateFile:   filepath.Join(ctx.Workspace, ".wse", "state.json"),
+	}
+}
+
+// portOffsetFromState reads the port offset allocated by the workspace phase
+// out of state, formatted as a string for the hook env. Handles both int (set
+// in-process) and float64 (round-tripped through JSON).
+func portOffsetFromState(s *state.WorkspaceState) string {
+	if s == nil {
+		return ""
+	}
+	ws, ok := s.Phases["workspace"]
+	if !ok || ws == nil || ws.Metadata == nil {
+		return ""
+	}
+	switch v := ws.Metadata["port_offset"].(type) {
+	case int:
+		return fmt.Sprintf("%d", v)
+	case float64:
+		return fmt.Sprintf("%d", int(v))
+	default:
+		return ""
 	}
 }

@@ -31,6 +31,16 @@ type RuntimeConfig struct {
 	HealthCheckLog        string `yaml:"health_check_log"`
 	DefaultPorts          []int  `yaml:"default_ports"`
 	StartupTimeoutSeconds int    `yaml:"startup_timeout_seconds"`
+
+	// PickPortOffset controls whether the workspace phase allocates a free port
+	// offset for this product. Defaults to true when unset. Set to false for
+	// products that don't listen on fixed ports or manage their own ports.
+	PickPortOffset *bool `yaml:"pick_port_offset"`
+}
+
+// ShouldPickPortOffset returns true unless pick_port_offset is explicitly false.
+func (r RuntimeConfig) ShouldPickPortOffset() bool {
+	return r.PickPortOffset == nil || *r.PickPortOffset
 }
 
 type ProductConfig struct {

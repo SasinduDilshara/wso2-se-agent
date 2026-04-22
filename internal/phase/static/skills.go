@@ -140,7 +140,7 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 			content := fmt.Sprintf("# %s %s — Issue #%s\n\nIssue: %s\n",
 				ctx.ProductConfig.Product, ctx.ProductConfig.Version,
 				ctx.IssueNumber, ctx.IssueURL)
-			if hasOffset {
+			if hasOffset && offset > 0 {
 				content += renderPortOffsetBlock(offset, ctx.ProductConfig.Runtime.DefaultPorts)
 			}
 			if err := os.WriteFile(dstClaude, []byte(content), 0644); err != nil {

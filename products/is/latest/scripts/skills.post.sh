@@ -18,7 +18,6 @@ cat >> "$CLAUDE_MD" <<EOF
 - Architecture: $ARCH
 - OS: $OS
 - Docker platform: $DOCKER_ARCH
-- Note: If architecture is arm64, Oracle XE Docker images require \`--platform linux/amd64\` flag and may be slow or unavailable. Consider code-level analysis for Oracle-specific issues instead of running a real Oracle instance.
 EOF
 
 echo "  Appended system info to CLAUDE.md"

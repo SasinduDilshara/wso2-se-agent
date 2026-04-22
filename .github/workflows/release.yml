@@ -1,11 +1,9 @@
 name: Release
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-    types:
-      - closed
     paths:
       - 'cmd/**'
       - 'internal/**'
@@ -18,7 +16,6 @@ on:
 jobs:
   release:
     name: Tag and release
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write

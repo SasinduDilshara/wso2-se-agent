@@ -20,7 +20,7 @@ cat >> "$CLAUDE_MD" <<EOF
 - Docker platform: $DOCKER_ARCH
 EOF
 
-if [ -n "${WSE_PORT_OFFSET:-}" ]; then
+if [ -n "${WSE_PORT_OFFSET:-}" ] && [ "${WSE_PORT_OFFSET}" -gt 0 ]; then
   OFFSET="$WSE_PORT_OFFSET"
   cat >> "$CLAUDE_MD" <<EOF
 

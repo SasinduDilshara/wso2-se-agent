@@ -68,7 +68,7 @@ func TestPipeline_FromTo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := []string{"reproduce", "risk-assessment", "plan-and-fix", "verify"}
+	expected := []string{"reproduce", "plan", "risk-assessment", "fix", "verify"}
 	if len(phases) != len(expected) {
 		t.Fatalf("got %d phases, want %d", len(phases), len(expected))
 	}
@@ -107,7 +107,7 @@ func TestPipeline_FromReproduceToPR(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := []string{"reproduce", "risk-assessment", "plan-and-fix", "verify", "test-coverage", "pr"}
+	expected := []string{"reproduce", "plan", "risk-assessment", "fix", "verify", "test-coverage", "pr"}
 	if len(phases) != len(expected) {
 		t.Fatalf("got %d phases, want %d", len(phases), len(expected))
 	}
@@ -124,7 +124,7 @@ func TestPipeline_SkipPhases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := []string{"reproduce", "plan-and-fix", "verify", "pr"}
+	expected := []string{"reproduce", "plan", "fix", "verify", "pr"}
 	if len(phases) != len(expected) {
 		t.Fatalf("got %d phases, want %d", len(phases), len(expected))
 	}

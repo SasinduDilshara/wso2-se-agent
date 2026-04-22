@@ -61,11 +61,12 @@ GitHub username is auto-detected from `gh`. No `config init` needed — sensible
 | 2 | workspace | static | Create git worktrees, copy product pack |
 | 3 | skills | static | Download and install Claude skills, generate CLAUDE.md |
 | 4 | reproduce | ai | Reproduce the bug |
-| 5 | risk-assessment | ai | Score fix risk (0-10), gate high-risk issues |
-| 6 | plan-and-fix | ai | Plan and implement the fix |
-| 7 | verify | ai | Verify the fix resolves the issue |
-| 8 | test-coverage | ai | Write regression tests |
-| 9 | pr | ai | Create pull request |
+| 5 | plan | ai | Plan the fix approach |
+| 6 | risk-assessment | ai | Score fix risk (0-10), gate high-risk issues |
+| 7 | fix | ai | Implement the fix |
+| 8 | verify | ai | Verify the fix resolves the issue |
+| 9 | test-coverage | ai | Write regression tests |
+| 10 | pr | ai | Create pull request |
 
 ## Run Flags
 

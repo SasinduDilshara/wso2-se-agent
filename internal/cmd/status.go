@@ -44,7 +44,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	headers := []string{"Phase", "Status", "Cost", "Duration"}
 	var rows [][]string
 
-	for _, phaseName := range []string{"prereq", "workspace", "skills", "reproduce", "risk-assessment", "plan-and-fix", "verify", "test-coverage", "pr"} {
+	for _, phaseName := range []string{"prereq", "workspace", "skills", "reproduce", "plan", "risk-assessment", "fix", "verify", "test-coverage", "pr"} {
 		if r, ok := ws.Phases[phaseName]; ok {
 			cost := fmt.Sprintf("$%.2f", r.CostUSD)
 			if r.CostUSD == 0 {

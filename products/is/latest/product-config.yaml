@@ -15,8 +15,9 @@ runtime:
 
 phase_limits:
   reproduce: 10.0
+  plan: 5.0
   risk-assessment: 2.0
-  plan-and-fix: 15.0
+  fix: 15.0
   verify: 10.0
   test-coverage: 10.0
   pr: 5.0

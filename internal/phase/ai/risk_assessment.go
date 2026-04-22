@@ -19,8 +19,8 @@ func (p *RiskAssessmentPhase) Name() string        { return "risk-assessment" }
 func (p *RiskAssessmentPhase) Type() phase.PhaseType { return phase.PhaseTypeAI }
 
 func (p *RiskAssessmentPhase) Preconditions(ctx *phase.PhaseContext) error {
-	if !ctx.State.PhaseSucceeded("reproduce") {
-		return fmt.Errorf("reproduce phase must succeed first. Run: --phase reproduce")
+	if !ctx.State.PhaseSucceeded("plan") {
+		return fmt.Errorf("plan phase must succeed first. Run: --phase plan")
 	}
 	return nil
 }

@@ -19,8 +19,8 @@ func (p *VerifyPhase) Name() string        { return "verify" }
 func (p *VerifyPhase) Type() phase.PhaseType { return phase.PhaseTypeAI }
 
 func (p *VerifyPhase) Preconditions(ctx *phase.PhaseContext) error {
-	if !ctx.State.PhaseSucceeded("plan-and-fix") {
-		return fmt.Errorf("plan-and-fix phase must succeed first. Run: --phase plan-and-fix")
+	if !ctx.State.PhaseSucceeded("fix") {
+		return fmt.Errorf("fix phase must succeed first. Run: --phase fix")
 	}
 	return nil
 }

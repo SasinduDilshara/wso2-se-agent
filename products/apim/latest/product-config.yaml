@@ -27,8 +27,9 @@ runtime:
 
 phase_limits:
   reproduce: 10.0
+  plan: 5.0
   risk-assessment: 2.0
-  plan-and-fix: 15.0
+  fix: 15.0
   verify: 10.0
   test-coverage: 10.0
   pr: 5.0
@@ -37,5 +38,5 @@ skip_phases: []
 
 skills_repo: "Tharsanan1/wso2-se-agent-skills"
 skills_branch: "main"
-skills_ref: "api-manager-specific/v4"
-claude_md_url: "https://github.com/Tharsanan1/wso2-se-agent-skills/blob/main/api-manager-specific/v4/CLAUDE.md"
+skills_ref: "api-manager-specific/v5"
+claude_md_url: "https://github.com/Tharsanan1/wso2-se-agent-skills/blob/main/api-manager-specific/v5/CLAUDE.md"

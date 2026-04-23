@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -79,6 +80,42 @@ func runConfigInit(cmd *cobra.Command, args []string) error {
 		cfg.WorkspaceRoot = wsRoot
 	}
 
+	// Prompt for Claude model (empty lets claude pick its own default)
+	modelDisplay := cfg.ClaudeModel
+	if modelDisplay == "" {
+		modelDisplay = "empty = claude default"
+	}
+	fmt.Printf("Claude model [%s]: ", modelDisplay)
+	model, _ := reader.ReadString('\n')
+	model = strings.TrimSpace(model)
+	if model != "" {
+		cfg.ClaudeModel = model
+	}
+
+	// Prompt for risk threshold (0-10)
+	fmt.Printf("Risk threshold (0-10) [%d]: ", cfg.RiskThreshold)
+	rt, _ := reader.ReadString('\n')
+	rt = strings.TrimSpace(rt)
+	if rt != "" {
+		if n, err := strconv.Atoi(rt); err == nil && n >= 0 && n <= 10 {
+			cfg.RiskThreshold = n
+		} else {
+			fmt.Printf("  (invalid; keeping %d)\n", cfg.RiskThreshold)
+		}
+	}
+
+	// Prompt for per-phase max budget USD
+	fmt.Printf("Max budget per phase USD [%.2f]: ", cfg.MaxBudgetUSD)
+	mb, _ := reader.ReadString('\n')
+	mb = strings.TrimSpace(mb)
+	if mb != "" {
+		if f, err := strconv.ParseFloat(mb, 64); err == nil && f > 0 {
+			cfg.MaxBudgetUSD = f
+		} else {
+			fmt.Printf("  (invalid; keeping %.2f)\n", cfg.MaxBudgetUSD)
+		}
+	}
+
 	// Prompt for generic skills repo
 	fmt.Printf("Generic skills repo (org/repo, empty to skip) [%s]: ", cfg.GenericSkillsRepo)
 	gsRepo, _ := reader.ReadString('\n')
@@ -145,6 +182,14 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("max_budget_usd:   %.2f\n", cfg.MaxBudgetUSD)
 	fmt.Printf("log_level:        %s\n", cfg.LogLevel)
 	fmt.Printf("claude_model:     %s\n", cfg.ClaudeModel)
+	if len(cfg.PhaseModels) > 0 {
+		fmt.Printf("phase_models:\n")
+		for _, phase := range []string{"reproduce", "plan", "risk-assessment", "fix", "verify", "test-coverage", "pr"} {
+			if m, ok := cfg.PhaseModels[phase]; ok && m != "" {
+				fmt.Printf("  %-15s %s\n", phase+":", m)
+			}
+		}
+	}
 	fmt.Printf("workspace_root:   %s\n", cfg.WorkspaceRoot)
 	fmt.Printf("\nGeneric skills:\n")
 	if cfg.GenericSkillsRepo != "" {

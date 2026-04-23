@@ -20,6 +20,21 @@ func NewAIPhaseRunner() *AIPhaseRunner {
 	}
 }
 
+// resolveModel picks the Claude model for this invocation. Precedence:
+//   1. --model flag on the run command (ctx.ModelOverride)
+//   2. phase-specific entry in global phase_models map
+//   3. global claude_model
+//   4. empty string (lets `claude` pick its own default)
+func resolveModel(ctx *phase.PhaseContext, phaseName string) string {
+	if ctx.ModelOverride != "" {
+		return ctx.ModelOverride
+	}
+	if m, ok := ctx.GlobalConfig.PhaseModels[phaseName]; ok && m != "" {
+		return m
+	}
+	return ctx.GlobalConfig.ClaudeModel
+}
+
 func (r *AIPhaseRunner) RunAIPhase(ctx *phase.PhaseContext, phaseName, prompt string, budgetOverride float64) (*state.PhaseResult, error) {
 	result := &state.PhaseResult{
 		Phase:     phaseName,
@@ -45,7 +60,7 @@ func (r *AIPhaseRunner) RunAIPhase(ctx *phase.PhaseContext, phaseName, prompt st
 		WorkingDir:     ctx.Workspace,
 		OutputFormat:   "stream-json",
 		MaxBudgetUSD:   budget,
-		Model:          ctx.GlobalConfig.ClaudeModel,
+		Model:          resolveModel(ctx, phaseName),
 		SkipPerms:      true,
 		Verbose:        true,
 		IncludePartial: true,

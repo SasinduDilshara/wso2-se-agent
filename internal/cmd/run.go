@@ -29,6 +29,7 @@ var (
 	riskThreshold int
 	maxBudgetUSD  float64
 	packPath      string
+	modelOverride string
 )
 
 var runCmd = &cobra.Command{
@@ -51,6 +52,7 @@ func init() {
 	runCmd.Flags().IntVar(&riskThreshold, "risk-threshold", -1, "Risk score threshold (0-10, default from config)")
 	runCmd.Flags().Float64Var(&maxBudgetUSD, "max-budget-usd", 0, "Max budget per phase in USD")
 	runCmd.Flags().StringVar(&packPath, "pack", "", "Path to product pack zip file")
+	runCmd.Flags().StringVar(&modelOverride, "model", "", "Claude model to use for every AI phase (overrides config; empty = use config)")
 
 	runCmd.MarkFlagRequired("product")
 	runCmd.MarkFlagRequired("version")
@@ -132,7 +134,7 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 	ctx := phase.NewPhaseContext(
 		wsPath, issueURL, iss.Number,
 		productCfg, globalCfg, repoReg, ws,
-		yes, budget, threshold, packPath, verbose,
+		yes, budget, threshold, packPath, modelOverride, verbose,
 	)
 
 	// Collect phase names for display

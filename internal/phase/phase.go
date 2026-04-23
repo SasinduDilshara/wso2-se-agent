@@ -35,6 +35,10 @@ type PhaseContext struct {
 	MaxBudgetUSD  float64
 	RiskThreshold int
 	PackPath      string
+	// ModelOverride, when non-empty, forces every AI phase in this run to use
+	// this Claude model, overriding both the global claude_model and any
+	// per-phase model in phase_models. Set by the run command's --model flag.
+	ModelOverride string
 	Printer       *ui.Printer
 	RunTimestamp  string
 	Verbose       bool
@@ -50,6 +54,7 @@ func NewPhaseContext(
 	maxBudget float64,
 	riskThreshold int,
 	packPath string,
+	modelOverride string,
 	verbose bool,
 ) *PhaseContext {
 	return &PhaseContext{
@@ -64,6 +69,7 @@ func NewPhaseContext(
 		MaxBudgetUSD:  maxBudget,
 		RiskThreshold: riskThreshold,
 		PackPath:      packPath,
+		ModelOverride: modelOverride,
 		Printer:       ui.NewPrinter(verbose),
 		RunTimestamp:  time.Now().Format("20060102-150405"),
 		Verbose:       verbose,

@@ -3,10 +3,19 @@
 # Reads WSE_MOCK_CLAUDE_FIXTURE env var to determine which fixture to output.
 # Reads WSE_MOCK_CLAUDE_EXIT_CODE for the exit code (default 0).
 # Creates any files that the fixture references via Write tool calls.
+# If WSE_MOCK_CLAUDE_ARGS_FILE is set, writes the full argv (one arg per line)
+# to that file before anything else — lets tests assert what the CLI passed.
 
 FIXTURE="${WSE_MOCK_CLAUDE_FIXTURE:-}"
 EXIT_CODE="${WSE_MOCK_CLAUDE_EXIT_CODE:-0}"
 WORKSPACE_DIR="$(pwd)"
+
+if [ -n "${WSE_MOCK_CLAUDE_ARGS_FILE:-}" ]; then
+  : > "$WSE_MOCK_CLAUDE_ARGS_FILE"
+  for arg in "$@"; do
+    printf '%s\n' "$arg" >> "$WSE_MOCK_CLAUDE_ARGS_FILE"
+  done
+fi
 
 if [ -z "$FIXTURE" ]; then
   echo '{"type":"result","subtype":"success","is_error":false,"result":"mock: no fixture specified","total_cost_usd":0.01,"session_id":"mock"}'

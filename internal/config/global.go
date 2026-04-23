@@ -12,15 +12,16 @@ import (
 )
 
 type GlobalConfig struct {
-	GitHubUsername    string  `yaml:"github_username"`
-	RiskThreshold    int     `yaml:"risk_threshold"`
-	MaxBudgetUSD     float64 `yaml:"max_budget_usd"`
-	LogLevel         string  `yaml:"log_level"`
-	ClaudeModel      string  `yaml:"claude_model"`
-	WorkspaceRoot    string  `yaml:"workspace_root"`
-	GenericSkillsRepo   string `yaml:"generic_skills_repo"`
-	GenericSkillsBranch string `yaml:"generic_skills_branch"`
-	GenericSkillsRef    string `yaml:"generic_skills_ref"`
+	GitHubUsername      string            `yaml:"github_username"`
+	RiskThreshold       int               `yaml:"risk_threshold"`
+	MaxBudgetUSD        float64           `yaml:"max_budget_usd"`
+	LogLevel            string            `yaml:"log_level"`
+	ClaudeModel         string            `yaml:"claude_model"`
+	PhaseModels         map[string]string `yaml:"phase_models,omitempty"`
+	WorkspaceRoot       string            `yaml:"workspace_root"`
+	GenericSkillsRepo   string            `yaml:"generic_skills_repo"`
+	GenericSkillsBranch string            `yaml:"generic_skills_branch"`
+	GenericSkillsRef    string            `yaml:"generic_skills_ref"`
 }
 
 func DefaultGlobalConfig() *GlobalConfig {

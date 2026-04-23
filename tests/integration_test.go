@@ -700,6 +700,186 @@ func TestConfigInit_WritesToWSEConfigDir(t *testing.T) {
 	}
 }
 
+// runReproduceWithModelSettings drives one `run --phase reproduce` against the
+// mock claude, with the given --model flag and per-phase / global model config,
+// and returns the arg list the mock received.
+func runReproduceWithModelSettings(t *testing.T, modelFlag, globalModel string, phaseModels map[string]string) []string {
+	t.Helper()
+
+	env := testutil.NewTestEnv(t)
+	t.Cleanup(env.Cleanup)
+
+	wsPath := filepath.Join(env.WorkspaceDir, "apim-issues-4856")
+	os.MkdirAll(filepath.Join(wsPath, ".ai", "logs"), 0755)
+	os.MkdirAll(filepath.Join(wsPath, ".wse"), 0755)
+	os.MkdirAll(filepath.Join(wsPath, ".claude", "skills", "reproduce"), 0755)
+	os.WriteFile(filepath.Join(wsPath, ".claude", "skills", "reproduce", "SKILL.md"), []byte("# reproduce"), 0644)
+
+	ws := state.New("https://github.com/wso2/product-apim/issues/4856", "4856", "apim", "latest")
+	ws.Phases["prereq"] = &state.PhaseResult{Status: state.StatusSuccess}
+	ws.Phases["workspace"] = &state.PhaseResult{Status: state.StatusSuccess}
+	ws.Phases["skills"] = &state.PhaseResult{Status: state.StatusSuccess}
+	state.Save(wsPath, ws)
+
+	configYAML := fmt.Sprintf(`github_username: testuser
+workspace_root: %s
+`, env.WorkspaceDir)
+	if globalModel != "" {
+		configYAML += fmt.Sprintf("claude_model: %s\n", globalModel)
+	}
+	if len(phaseModels) > 0 {
+		configYAML += "phase_models:\n"
+		for k, v := range phaseModels {
+			configYAML += fmt.Sprintf("  %s: %s\n", k, v)
+		}
+	}
+	env.WriteConfig(configYAML)
+	env.WriteRepos(`repos: {}`)
+	env.WriteProductConfig("apim", "latest", `
+product: apim
+version: latest
+repos: []
+phase_limits:
+  reproduce: 5.0
+skills_repo: "test/test"
+skills_branch: "main"
+skills_ref: "test"
+`)
+
+	argsFile := filepath.Join(env.RootDir, "claude-args.txt")
+	binPath := buildCLI(t)
+
+	args := []string{
+		"run",
+		"--product", "apim",
+		"--version", "latest",
+		"--issue", "https://github.com/wso2/product-apim/issues/4856",
+		"--pack", "/dev/null",
+		"--phase", "reproduce",
+		"--yes",
+	}
+	if modelFlag != "" {
+		args = append(args, "--model", modelFlag)
+	}
+
+	cmd := exec.Command(binPath, args...)
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"PATH="+env.MocksDir+":"+env.OrigPath,
+		"WSE_MOCK_CLAUDE_FIXTURE="+env.FixturePath("reproduce-output.jsonl"),
+		"WSE_MOCK_CLAUDE_ARGS_FILE="+argsFile,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("CLI failed: %v\n%s", err, string(output))
+	}
+
+	data, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatalf("args file not created: %v", err)
+	}
+	return strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+}
+
+func modelFromArgs(args []string) string {
+	for i, a := range args {
+		if a == "--model" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+func TestRunModelFlag_ReachesClaude(t *testing.T) {
+	args := runReproduceWithModelSettings(t, "claude-haiku-4-5-20251001", "", nil)
+	if got := modelFromArgs(args); got != "claude-haiku-4-5-20251001" {
+		t.Errorf("claude got model %q, want claude-haiku-4-5-20251001\nfull args: %v", got, args)
+	}
+}
+
+func TestPhaseModelsOverride_ReachesClaude(t *testing.T) {
+	args := runReproduceWithModelSettings(t, "",
+		"claude-sonnet-4-6",
+		map[string]string{"reproduce": "claude-opus-4-7"})
+	if got := modelFromArgs(args); got != "claude-opus-4-7" {
+		t.Errorf("claude got model %q, want claude-opus-4-7 (phase_models)\nfull args: %v", got, args)
+	}
+}
+
+func TestClaudeModelGlobalDefault_ReachesClaude(t *testing.T) {
+	args := runReproduceWithModelSettings(t, "", "claude-sonnet-4-6", nil)
+	if got := modelFromArgs(args); got != "claude-sonnet-4-6" {
+		t.Errorf("claude got model %q, want claude-sonnet-4-6 (global)\nfull args: %v", got, args)
+	}
+}
+
+func TestModelPrecedence_FlagBeatsPhaseBeatsGlobal(t *testing.T) {
+	// Flag set, phase set, global set — flag must win.
+	args := runReproduceWithModelSettings(t,
+		"claude-haiku-4-5-20251001",
+		"claude-sonnet-4-6",
+		map[string]string{"reproduce": "claude-opus-4-7"})
+	if got := modelFromArgs(args); got != "claude-haiku-4-5-20251001" {
+		t.Errorf("flag should win: got %q, want claude-haiku-4-5-20251001", got)
+	}
+}
+
+func TestNoModelConfigured_OmitsModelFlag(t *testing.T) {
+	args := runReproduceWithModelSettings(t, "", "", nil)
+	for _, a := range args {
+		if a == "--model" {
+			t.Errorf("--model should not appear in claude args when nothing is configured\nargs: %v", args)
+		}
+	}
+}
+
+func TestConfigInit_WritesClaudeModelAndThresholdAndBudget(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	defer env.Cleanup()
+
+	customDir := filepath.Join(env.RootDir, "custom-init-dir")
+	binPath := buildCLI(t)
+
+	cmd := exec.Command(binPath, "config", "init")
+	// Piped answers follow prompt order:
+	//   github_username, workspace_root, claude_model, risk_threshold,
+	//   max_budget_usd, generic_skills_repo
+	cmd.Stdin = strings.NewReader(
+		"testuser\n" +
+			"\n" + // workspace_root — keep default
+			"claude-opus-4-7\n" +
+			"3\n" +
+			"42.5\n" +
+			"\n", // generic_skills_repo — skip
+	)
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"WSE_CONFIG_DIR="+customDir,
+	)
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("CLI failed: %v\n%s", err, string(output))
+	}
+
+	data, err := os.ReadFile(filepath.Join(customDir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("config.yaml not written: %v", err)
+	}
+	yamlStr := string(data)
+
+	for _, want := range []string{
+		"github_username: testuser",
+		"claude_model: claude-opus-4-7",
+		"risk_threshold: 3",
+		"max_budget_usd: 42.5",
+	} {
+		if !strings.Contains(yamlStr, want) {
+			t.Errorf("expected %q in config.yaml, got:\n%s", want, yamlStr)
+		}
+	}
+}
+
 // buildCLI compiles the CLI binary once and caches it in a persistent temp dir.
 var cachedBinPath string
 

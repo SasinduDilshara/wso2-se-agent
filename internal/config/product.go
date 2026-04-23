@@ -19,6 +19,20 @@ type RepoRef struct {
 	Name     string `yaml:"name"`
 	Upstream string `yaml:"upstream"` // e.g., "wso2/carbon-apimgt"
 	Branch   string `yaml:"branch"`
+	// WorktreeDir optionally overrides the directory name used in the workspace.
+	// Defaults to Name when empty. Useful when Name needs to be disambiguated in
+	// the shared repo registry (e.g., "carbon-apimgt-support") but the worktree
+	// directory should read as the plain repo name (e.g., "carbon-apimgt").
+	WorktreeDir string `yaml:"worktree_dir,omitempty"`
+}
+
+// WorktreeName returns the directory name to use for this repo's worktree
+// inside a workspace. Falls back to Name when WorktreeDir is unset.
+func (r RepoRef) WorktreeName() string {
+	if r.WorktreeDir != "" {
+		return r.WorktreeDir
+	}
+	return r.Name
 }
 
 type BuildConfig struct {

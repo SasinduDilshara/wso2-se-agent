@@ -1,0 +1,39 @@
+product: apim
+version: 4.0.0
+
+repos:
+  - name: carbon-apimgt
+    upstream: wso2-support/carbon-apimgt
+    branch: support-9.0.174.x-full
+  - name: product-apim
+    upstream: wso2-support/product-apim
+    branch: support-4.0.0.x-full
+  - name: docs-apim
+    upstream: wso2/docs-apim
+    branch: 4.0.0
+
+build:
+  pack_zip_pattern: "wso2am-*.zip"
+  pack_source: ""
+
+runtime:
+  startup_command: "sh api-manager.sh"
+  health_check_log: "Mgt Console URL"
+  default_ports: [9443, 9763, 8280, 8243, 5672]
+  startup_timeout_seconds: 180
+
+phase_limits:
+  reproduce: 10.0
+  plan: 5.0
+  risk-assessment: 2.0
+  fix: 15.0
+  verify: 10.0
+  test-coverage: 10.0
+  pr: 5.0
+
+skip_phases: []
+
+skills_repo: "Tharsanan1/wso2-se-agent-skills"
+skills_branch: "main"
+skills_ref: "api-manager-specific/v5"
+claude_md_url: "https://github.com/Tharsanan1/wso2-se-agent-skills/blob/main/api-manager-specific/v5/CLAUDE.md"

@@ -6,6 +6,37 @@ import (
 	"testing"
 )
 
+func TestRepoRef_WorktreeName(t *testing.T) {
+	cases := []struct {
+		name string
+		ref  RepoRef
+		want string
+	}{
+		{
+			name: "falls back to Name when WorktreeDir is empty",
+			ref:  RepoRef{Name: "carbon-apimgt"},
+			want: "carbon-apimgt",
+		},
+		{
+			name: "uses WorktreeDir override when set",
+			ref:  RepoRef{Name: "carbon-apimgt-support", WorktreeDir: "carbon-apimgt"},
+			want: "carbon-apimgt",
+		},
+		{
+			name: "WorktreeDir may differ from Name in arbitrary ways",
+			ref:  RepoRef{Name: "internal-key", WorktreeDir: "display-name"},
+			want: "display-name",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.ref.WorktreeName(); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestDefaultGlobalConfig(t *testing.T) {
 	cfg := DefaultGlobalConfig()
 

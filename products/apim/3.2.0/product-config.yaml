@@ -3,9 +3,11 @@ version: 3.2.0
 
 repos:
   - name: carbon-apimgt-support
+    worktree_dir: carbon-apimgt
     upstream: wso2-support/carbon-apimgt
     branch: support-6.7.206.x-full
   - name: product-apim-support
+    worktree_dir: product-apim
     upstream: wso2-support/product-apim
     branch: support-3.2.0.x-full
   - name: docs-apim

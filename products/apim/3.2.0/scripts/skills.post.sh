@@ -49,8 +49,8 @@ WSO2 repo that isn't already a worktree in this workspace, follow these rules
 — do NOT default to \`wso2/*\` or \`master\`:
 
 1. **Org**: always \`wso2-support/<repo>\`.
-2. **Find the target version in \`carbon-apimgt-support/pom.xml\`.** Look in its
-   \`<properties>\` block. Skip \`product-apim-support/pom.xml\` — it's a thin
+2. **Find the target version in \`carbon-apimgt/pom.xml\`.** Look in its
+   \`<properties>\` block. Skip \`product-apim/pom.xml\` — it's a thin
    aggregator and has no version properties. Property names are NOT
    mechanically derivable from the repo name; search by best-guess string
    and skim the results. Real examples (versions shown are from APIM 4.6.0

@@ -47,11 +47,11 @@ func (p *WorkspacePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, e
 			return result, fmt.Errorf("%s", result.Error)
 		}
 
-		worktreePath := filepath.Join(ctx.Workspace, repo.Name)
+		worktreePath := filepath.Join(ctx.Workspace, repo.WorktreeName())
 
 		// Skip if worktree already exists
 		if _, err := os.Stat(worktreePath); err == nil {
-			ctx.Printer.Info(fmt.Sprintf("  Worktree already exists: %s", repo.Name))
+			ctx.Printer.Info(fmt.Sprintf("  Worktree already exists: %s", repo.WorktreeName()))
 			continue
 		}
 

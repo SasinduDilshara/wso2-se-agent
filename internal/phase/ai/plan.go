@@ -27,7 +27,7 @@ func (p *PlanPhase) Preconditions(ctx *phase.PhaseContext) error {
 
 func (p *PlanPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
 	prompt := fmt.Sprintf("/plan %s", ctx.IssueNumber)
-	return p.runner.RunAIPhase(ctx, "plan", prompt, 0)
+	return p.runner.RunAIPhase(ctx, "plan", prompt, 0, nil)
 }
 
 func (p *PlanPhase) ExpectedArtifacts() []string {

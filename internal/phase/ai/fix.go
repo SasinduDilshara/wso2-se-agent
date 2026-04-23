@@ -27,7 +27,7 @@ func (p *FixPhase) Preconditions(ctx *phase.PhaseContext) error {
 
 func (p *FixPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
 	prompt := fmt.Sprintf("/fix %s", ctx.IssueNumber)
-	return p.runner.RunAIPhase(ctx, "fix", prompt, 0)
+	return p.runner.RunAIPhase(ctx, "fix", prompt, 0, nil)
 }
 
 func (p *FixPhase) ExpectedArtifacts() []string {

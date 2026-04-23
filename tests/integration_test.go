@@ -148,7 +148,6 @@ func TestFullStaticPipeline_WithFakeRepos(t *testing.T) {
 	// Write configs
 	env.WriteConfig(fmt.Sprintf(`
 github_username: testuser
-risk_threshold: 7
 max_budget_usd: 15.0
 log_level: info
 workspace_root: %s
@@ -286,7 +285,6 @@ func TestStaticPhaseScripts(t *testing.T) {
 
 	env.WriteConfig(fmt.Sprintf(`
 github_username: testuser
-risk_threshold: 7
 max_budget_usd: 15.0
 log_level: info
 workspace_root: %s
@@ -408,7 +406,6 @@ func TestReproducePhase_WithMockClaude(t *testing.T) {
 
 	env.WriteConfig(fmt.Sprintf(`
 github_username: testuser
-risk_threshold: 7
 max_budget_usd: 15.0
 workspace_root: %s
 `, env.WorkspaceDir))
@@ -529,8 +526,7 @@ func TestStatusCommand(t *testing.T) {
 	ws := state.New("https://github.com/wso2/product-apim/issues/4856", "4856", "apim", "latest")
 	ws.Phases["prereq"] = &state.PhaseResult{Phase: "prereq", Status: state.StatusSuccess, Duration: "1ms"}
 	ws.Phases["reproduce"] = &state.PhaseResult{Phase: "reproduce", Status: state.StatusSuccess, Duration: "30s", CostUSD: 2.29}
-	score := 4
-	ws.RiskScore = &score
+	ws.RiskVerdict = "GO"
 	state.Save(wsPath, ws)
 
 	binPath := buildCLI(t)
@@ -548,8 +544,8 @@ func TestStatusCommand(t *testing.T) {
 	if !strings.Contains(outStr, "$2.29") {
 		t.Error("expected cost in output")
 	}
-	if !strings.Contains(outStr, "4/10") {
-		t.Error("expected risk score in output")
+	if !strings.Contains(outStr, "Verdict: GO") {
+		t.Error("expected risk verdict in output")
 	}
 }
 
@@ -596,7 +592,6 @@ func TestConfigShow(t *testing.T) {
 
 	env.WriteConfig(`
 github_username: testuser
-risk_threshold: 5
 max_budget_usd: 20.0
 `)
 
@@ -628,7 +623,6 @@ func TestConfigShow_RespectsWSEConfigDirEnv(t *testing.T) {
 	// different username. The CLI must read from the override path.
 	env.WriteConfig(`
 github_username: home-user
-risk_threshold: 3
 max_budget_usd: 5.0
 `)
 
@@ -638,7 +632,6 @@ max_budget_usd: 5.0
 	}
 	overrideYAML := `
 github_username: override-user
-risk_threshold: 9
 max_budget_usd: 42.0
 `
 	if err := os.WriteFile(filepath.Join(customDir, "config.yaml"), []byte(overrideYAML), 0644); err != nil {
@@ -833,7 +826,7 @@ func TestNoModelConfigured_OmitsModelFlag(t *testing.T) {
 	}
 }
 
-func TestConfigInit_WritesClaudeModelAndThresholdAndBudget(t *testing.T) {
+func TestConfigInit_WritesClaudeModelAndBudget(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	defer env.Cleanup()
 
@@ -842,13 +835,12 @@ func TestConfigInit_WritesClaudeModelAndThresholdAndBudget(t *testing.T) {
 
 	cmd := exec.Command(binPath, "config", "init")
 	// Piped answers follow prompt order:
-	//   github_username, workspace_root, claude_model, risk_threshold,
+	//   github_username, workspace_root, claude_model,
 	//   max_budget_usd, generic_skills_repo
 	cmd.Stdin = strings.NewReader(
 		"testuser\n" +
 			"\n" + // workspace_root — keep default
 			"claude-opus-4-7\n" +
-			"3\n" +
 			"42.5\n" +
 			"\n", // generic_skills_repo — skip
 	)
@@ -871,7 +863,6 @@ func TestConfigInit_WritesClaudeModelAndThresholdAndBudget(t *testing.T) {
 	for _, want := range []string{
 		"github_username: testuser",
 		"claude_model: claude-opus-4-7",
-		"risk_threshold: 3",
 		"max_budget_usd: 42.5",
 	} {
 		if !strings.Contains(yamlStr, want) {

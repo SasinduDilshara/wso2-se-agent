@@ -33,7 +33,6 @@ type PhaseContext struct {
 	State         *state.WorkspaceState
 	AutoApprove   bool
 	MaxBudgetUSD  float64
-	RiskThreshold int
 	PackPath      string
 	// ModelOverride, when non-empty, forces every AI phase in this run to use
 	// this Claude model, overriding both the global claude_model and any
@@ -52,7 +51,6 @@ func NewPhaseContext(
 	ws *state.WorkspaceState,
 	autoApprove bool,
 	maxBudget float64,
-	riskThreshold int,
 	packPath string,
 	modelOverride string,
 	verbose bool,
@@ -67,7 +65,6 @@ func NewPhaseContext(
 		State:         ws,
 		AutoApprove:   autoApprove,
 		MaxBudgetUSD:  maxBudget,
-		RiskThreshold: riskThreshold,
 		PackPath:      packPath,
 		ModelOverride: modelOverride,
 		Printer:       ui.NewPrinter(verbose),

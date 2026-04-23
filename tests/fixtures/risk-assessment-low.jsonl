@@ -1,4 +1,4 @@
 {"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Assessing risk for issue #4856..."}},"session_id":"test-session"}
 {"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":".ai/ia-4856.md"}}]},"session_id":"test-session"}
-{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":".ai/risk-assessment-4856.md","content":"# Risk Assessment\n\nRisk Score: 3/10 (Low)"}}]},"session_id":"test-session"}
-{"type":"result","subtype":"success","is_error":false,"result":"Risk score: 3/10 (Low). Safe for automated fix.","total_cost_usd":0.45,"session_id":"test-session"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":".ai/risk-assessment-4856.md","content":"# Risk Assessment — Issue #4856\n\n**Verdict:** GO\n\nSafe for automated fix."}}]},"session_id":"test-session"}
+{"type":"result","subtype":"success","is_error":false,"result":"Verdict: GO. Safe for automated fix.","total_cost_usd":0.45,"session_id":"test-session"}

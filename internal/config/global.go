@@ -13,7 +13,6 @@ import (
 
 type GlobalConfig struct {
 	GitHubUsername      string            `yaml:"github_username"`
-	RiskThreshold       int               `yaml:"risk_threshold"`
 	MaxBudgetUSD        float64           `yaml:"max_budget_usd"`
 	LogLevel            string            `yaml:"log_level"`
 	ClaudeModel         string            `yaml:"claude_model"`
@@ -28,7 +27,6 @@ func DefaultGlobalConfig() *GlobalConfig {
 	home, _ := os.UserHomeDir()
 	return &GlobalConfig{
 		GitHubUsername:      "",
-		RiskThreshold:       7,
 		MaxBudgetUSD:        15.0,
 		LogLevel:            "info",
 		ClaudeModel:         "",

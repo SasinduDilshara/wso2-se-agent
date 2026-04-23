@@ -45,7 +45,7 @@ type WorkspaceState struct {
 	CreatedAt   time.Time               `json:"created_at"`
 	Worktrees   []WorktreeEntry         `json:"worktrees"`
 	Phases      map[string]*PhaseResult `json:"phases"`
-	RiskScore   *int                    `json:"risk_score,omitempty"`
+	RiskVerdict string                  `json:"risk_verdict,omitempty"`
 	PRURL       string                  `json:"pr_url,omitempty"`
 }
 

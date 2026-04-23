@@ -92,18 +92,6 @@ func runConfigInit(cmd *cobra.Command, args []string) error {
 		cfg.ClaudeModel = model
 	}
 
-	// Prompt for risk threshold (0-10)
-	fmt.Printf("Risk threshold (0-10) [%d]: ", cfg.RiskThreshold)
-	rt, _ := reader.ReadString('\n')
-	rt = strings.TrimSpace(rt)
-	if rt != "" {
-		if n, err := strconv.Atoi(rt); err == nil && n >= 0 && n <= 10 {
-			cfg.RiskThreshold = n
-		} else {
-			fmt.Printf("  (invalid; keeping %d)\n", cfg.RiskThreshold)
-		}
-	}
-
 	// Prompt for per-phase max budget USD
 	fmt.Printf("Max budget per phase USD [%.2f]: ", cfg.MaxBudgetUSD)
 	mb, _ := reader.ReadString('\n')
@@ -178,7 +166,6 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Config file: %s\n\n", cfgPath)
 	fmt.Printf("github_username:  %s\n", cfg.GitHubUsername)
-	fmt.Printf("risk_threshold:   %d\n", cfg.RiskThreshold)
 	fmt.Printf("max_budget_usd:   %.2f\n", cfg.MaxBudgetUSD)
 	fmt.Printf("log_level:        %s\n", cfg.LogLevel)
 	fmt.Printf("claude_model:     %s\n", cfg.ClaudeModel)

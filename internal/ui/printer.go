@@ -45,13 +45,14 @@ func (p *Printer) PhaseFailed(name, message string) {
 	fmt.Printf("  %s\u2717%s  %s\n", Red, Reset, message)
 }
 
-func (p *Printer) RiskGatePass(score, threshold int) {
-	fmt.Printf("  %s\u25b8%s  pass  \u2014 score %d \u2264 threshold %d, auto-proceeding\n", Green, Reset, score, threshold)
+func (p *Printer) RiskGatePass(verdict string) {
+	fmt.Printf("  %s\u25b8%s  pass  \u2014 verdict: %s, auto-proceeding\n", Green, Reset, verdict)
 }
 
-func (p *Printer) RiskGateBlocked(score, threshold int) {
-	fmt.Printf("\n  %s\u25b8%s  %sBLOCKED%s  \u2014 risk score %d exceeds threshold %d\n", Red, Reset, BoldRed, Reset, score, threshold)
-	fmt.Printf("    Pipeline halted. Review the risk assessment before proceeding.\n")
+func (p *Printer) RiskGateBlocked(verdict, artifactPath string) {
+	fmt.Printf("\n  %s\u25b8%s  %sBLOCKED%s  \u2014 verdict: %s\n", Red, Reset, BoldRed, Reset, verdict)
+	fmt.Printf("    Review: %s\n", artifactPath)
+	fmt.Printf("    Resume with: wso2-se-agent run ... --from fix\n")
 }
 
 func (p *Printer) Info(msg string) {

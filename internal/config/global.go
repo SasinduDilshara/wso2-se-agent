@@ -22,6 +22,7 @@ type GlobalConfig struct {
 	GenericSkillsRepo   string            `yaml:"generic_skills_repo"`
 	GenericSkillsBranch string            `yaml:"generic_skills_branch"`
 	GenericSkillsRef    string            `yaml:"generic_skills_ref"`
+	SkillsCache         bool              `yaml:"skills_cache"`
 }
 
 func DefaultGlobalConfig() *GlobalConfig {
@@ -36,6 +37,7 @@ func DefaultGlobalConfig() *GlobalConfig {
 		GenericSkillsRepo:   "",
 		GenericSkillsBranch: "main",
 		GenericSkillsRef:    "skills",
+		SkillsCache:         true,
 	}
 }
 

@@ -41,7 +41,7 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 	// Copy generic skills from global config (separate repo)
 	gcfg := ctx.GlobalConfig
 	if gcfg.GenericSkillsRepo != "" {
-		genericLocalPath, err := downloadSkillsRepo(gcfg.GenericSkillsRepo, gcfg.GenericSkillsBranch)
+		genericLocalPath, err := downloadSkillsRepo(gcfg.GenericSkillsRepo, gcfg.GenericSkillsBranch, gcfg.SkillsCache)
 		if err != nil {
 			result.Status = state.StatusFailed
 			result.Error = fmt.Sprintf("failed to download generic skills repo: %v", err)
@@ -63,7 +63,7 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 	}
 
 	// Copy product-specific skills (override generic ones if same name)
-	productLocalPath, err := downloadSkillsRepo(ctx.ProductConfig.SkillsRepo, ctx.ProductConfig.SkillsBranch)
+	productLocalPath, err := downloadSkillsRepo(ctx.ProductConfig.SkillsRepo, ctx.ProductConfig.SkillsBranch, ctx.GlobalConfig.SkillsCache)
 	if err != nil {
 		result.Status = state.StatusFailed
 		result.Error = fmt.Sprintf("failed to download product skills repo: %v", err)
@@ -222,7 +222,7 @@ func (p *SkillsPhase) ExpectedArtifacts() []string {
 	return []string{}
 }
 
-func downloadSkillsRepo(repo, branch string) (string, error) {
+func downloadSkillsRepo(repo, branch string, useCache bool) (string, error) {
 	if branch == "" {
 		branch = "main"
 	}
@@ -236,9 +236,15 @@ func downloadSkillsRepo(repo, branch string) (string, error) {
 	cacheKey := strings.ReplaceAll(repo, "/", "-") + "-" + branch
 	cachedPath := filepath.Join(cacheDir, cacheKey)
 
-	// Use cache if it exists
-	if _, err := os.Stat(cachedPath); err == nil {
-		return cachedPath, nil
+	if useCache {
+		if _, err := os.Stat(cachedPath); err == nil {
+			return cachedPath, nil
+		}
+	} else {
+		// Force a fresh download: remove any stale cached copy.
+		if err := os.RemoveAll(cachedPath); err != nil {
+			return "", fmt.Errorf("failed to clear skills cache: %w", err)
+		}
 	}
 
 	// Download tarball using gh api

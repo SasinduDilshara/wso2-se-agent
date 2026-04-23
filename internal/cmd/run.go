@@ -30,6 +30,7 @@ var (
 	maxBudgetUSD  float64
 	packPath      string
 	modelOverride string
+	noSkillsCache bool
 )
 
 var runCmd = &cobra.Command{
@@ -53,6 +54,7 @@ func init() {
 	runCmd.Flags().Float64Var(&maxBudgetUSD, "max-budget-usd", 0, "Max budget per phase in USD")
 	runCmd.Flags().StringVar(&packPath, "pack", "", "Path to product pack zip file")
 	runCmd.Flags().StringVar(&modelOverride, "model", "", "Claude model to use for every AI phase (overrides config; empty = use config)")
+	runCmd.Flags().BoolVar(&noSkillsCache, "no-skills-cache", false, "Force a fresh download of skills repos (overrides skills_cache in global config)")
 
 	runCmd.MarkFlagRequired("product")
 	runCmd.MarkFlagRequired("version")
@@ -109,6 +111,10 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 	budget := globalCfg.MaxBudgetUSD
 	if maxBudgetUSD > 0 {
 		budget = maxBudgetUSD
+	}
+
+	if noSkillsCache {
+		globalCfg.SkillsCache = false
 	}
 
 	// Build phase registry

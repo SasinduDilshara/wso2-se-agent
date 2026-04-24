@@ -33,7 +33,13 @@ type PhaseContext struct {
 	State         *state.WorkspaceState
 	AutoApprove   bool
 	MaxBudgetUSD  float64
-	PackPath      string
+	// MaxTotalBudgetUSD, when > 0, is a cumulative USD cap across every AI
+	// phase that has ever run against this workspace (not just the current
+	// invocation — prior spend from state.json counts). Set by the run
+	// command's --max-total-budget-usd flag. When exceeded, the pipeline
+	// halts before starting the next phase.
+	MaxTotalBudgetUSD float64
+	PackPath          string
 	// ModelOverride, when non-empty, forces every AI phase in this run to use
 	// this Claude model, overriding both the global claude_model and any
 	// per-phase model in phase_models. Set by the run command's --model flag.
@@ -51,24 +57,26 @@ func NewPhaseContext(
 	ws *state.WorkspaceState,
 	autoApprove bool,
 	maxBudget float64,
+	maxTotalBudget float64,
 	packPath string,
 	modelOverride string,
 	verbose bool,
 ) *PhaseContext {
 	return &PhaseContext{
-		Workspace:     workspace,
-		IssueURL:      issueURL,
-		IssueNumber:   issueNumber,
-		ProductConfig: productCfg,
-		GlobalConfig:  globalCfg,
-		RepoRegistry:  repoReg,
-		State:         ws,
-		AutoApprove:   autoApprove,
-		MaxBudgetUSD:  maxBudget,
-		PackPath:      packPath,
-		ModelOverride: modelOverride,
-		Printer:       ui.NewPrinter(verbose),
-		RunTimestamp:  time.Now().Format("20060102-150405"),
-		Verbose:       verbose,
+		Workspace:         workspace,
+		IssueURL:          issueURL,
+		IssueNumber:       issueNumber,
+		ProductConfig:     productCfg,
+		GlobalConfig:      globalCfg,
+		RepoRegistry:      repoReg,
+		State:             ws,
+		AutoApprove:       autoApprove,
+		MaxBudgetUSD:      maxBudget,
+		MaxTotalBudgetUSD: maxTotalBudget,
+		PackPath:          packPath,
+		ModelOverride:     modelOverride,
+		Printer:           ui.NewPrinter(verbose),
+		RunTimestamp:      time.Now().Format("20060102-150405"),
+		Verbose:           verbose,
 	}
 }

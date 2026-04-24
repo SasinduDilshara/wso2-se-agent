@@ -101,7 +101,7 @@ func Save(workspaceDir string, s *WorkspaceState) error {
 
 func (s *WorkspaceState) PhaseSucceeded(name string) bool {
 	if r, ok := s.Phases[name]; ok {
-		return r.Status == StatusSuccess
+		return r.Status == StatusSuccess || r.Status == StatusGated
 	}
 	return false
 }

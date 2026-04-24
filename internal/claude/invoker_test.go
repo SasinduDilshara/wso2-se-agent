@@ -127,6 +127,57 @@ func TestProcessStream_NoDuplicateThinking(t *testing.T) {
 	}
 }
 
+func TestProcessStream_SuccessEnvelopeFiresCallbackOnce(t *testing.T) {
+	// Two result envelopes in the stream (defensive — shouldn't normally
+	// happen, but latching must only fire the watchdog callback once).
+	input := strings.Join([]string{
+		`{"type":"result","subtype":"success","result":"One","total_cost_usd":0.10}`,
+		`{"type":"result","subtype":"success","result":"Two","total_cost_usd":0.20}`,
+	}, "\n")
+
+	calls := 0
+	dir := t.TempDir()
+	processedLog, _ := os.Create(filepath.Join(dir, "p.log"))
+	rawLog, _ := os.Create(filepath.Join(dir, "r.log"))
+	defer processedLog.Close()
+	defer rawLog.Close()
+
+	result := processStream(strings.NewReader(input), processedLog, rawLog, func() { calls++ })
+
+	if !result.SawSuccess {
+		t.Error("SawSuccess should be true after success envelope")
+	}
+	if result.Subtype != "success" {
+		t.Errorf("Subtype: got %q, want %q", result.Subtype, "success")
+	}
+	if calls != 1 {
+		t.Errorf("onSuccess callback fired %d times, want 1", calls)
+	}
+}
+
+func TestProcessStream_NonSuccessSubtypeDoesNotLatch(t *testing.T) {
+	input := `{"type":"result","subtype":"error_max_tokens","result":"Hit cap","total_cost_usd":0.50}`
+
+	calls := 0
+	dir := t.TempDir()
+	processedLog, _ := os.Create(filepath.Join(dir, "p.log"))
+	rawLog, _ := os.Create(filepath.Join(dir, "r.log"))
+	defer processedLog.Close()
+	defer rawLog.Close()
+
+	result := processStream(strings.NewReader(input), processedLog, rawLog, func() { calls++ })
+
+	if result.SawSuccess {
+		t.Error("SawSuccess should be false for non-success subtype")
+	}
+	if result.Subtype != "error_max_tokens" {
+		t.Errorf("Subtype: got %q, want %q", result.Subtype, "error_max_tokens")
+	}
+	if calls != 0 {
+		t.Errorf("onSuccess should not fire for non-success subtype, fired %d times", calls)
+	}
+}
+
 // runProcessStream is a helper that runs processStream and returns the result + processed log content.
 func runProcessStream(t *testing.T, input string) (*InvocationResult, string) {
 	t.Helper()
@@ -148,7 +199,7 @@ func runProcessStream(t *testing.T, input string) (*InvocationResult, string) {
 	defer rawLog.Close()
 
 	reader := strings.NewReader(input)
-	result := processStream(reader, processedLog, rawLog)
+	result := processStream(reader, processedLog, rawLog, nil)
 
 	// Read back the processed log
 	processedLog.Close()

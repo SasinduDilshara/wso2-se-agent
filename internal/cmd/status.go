@@ -31,8 +31,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Product: %s %s\n", ws.Product, ws.Version)
 	fmt.Printf("Created: %s\n", ws.CreatedAt.Format("2006-01-02 15:04:05"))
 
-	if ws.RiskScore != nil {
-		fmt.Printf("Risk:    %d/10\n", *ws.RiskScore)
+	if ws.RiskVerdict != "" {
+		fmt.Printf("Verdict: %s\n", ws.RiskVerdict)
 	}
 	if ws.PRURL != "" {
 		fmt.Printf("PR:      %s\n", ws.PRURL)

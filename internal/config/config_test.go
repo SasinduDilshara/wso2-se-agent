@@ -40,9 +40,6 @@ func TestRepoRef_WorktreeName(t *testing.T) {
 func TestDefaultGlobalConfig(t *testing.T) {
 	cfg := DefaultGlobalConfig()
 
-	if cfg.RiskThreshold != 7 {
-		t.Errorf("RiskThreshold: got %d, want 7", cfg.RiskThreshold)
-	}
 	if cfg.MaxBudgetUSD != 15.0 {
 		t.Errorf("MaxBudgetUSD: got %f, want 15.0", cfg.MaxBudgetUSD)
 	}
@@ -60,7 +57,6 @@ func TestSaveAndLoadGlobalConfig(t *testing.T) {
 
 	cfg := &GlobalConfig{
 		GitHubUsername: "testuser",
-		RiskThreshold:  5,
 		MaxBudgetUSD:   20.0,
 		LogLevel:       "debug",
 		ClaudeModel:    "opus",
@@ -85,9 +81,6 @@ func TestSaveAndLoadGlobalConfig(t *testing.T) {
 	if loaded.GitHubUsername != "testuser" {
 		t.Errorf("GitHubUsername: got %q, want %q", loaded.GitHubUsername, "testuser")
 	}
-	if loaded.RiskThreshold != 5 {
-		t.Errorf("RiskThreshold: got %d, want 5", loaded.RiskThreshold)
-	}
 	if loaded.MaxBudgetUSD != 20.0 {
 		t.Errorf("MaxBudgetUSD: got %f, want 20.0", loaded.MaxBudgetUSD)
 	}
@@ -105,8 +98,8 @@ func TestLoadGlobalConfigDefaults(t *testing.T) {
 	}
 
 	// Should return defaults
-	if cfg.RiskThreshold != 7 {
-		t.Errorf("expected default RiskThreshold 7, got %d", cfg.RiskThreshold)
+	if cfg.MaxBudgetUSD != 15.0 {
+		t.Errorf("expected default MaxBudgetUSD 15.0, got %f", cfg.MaxBudgetUSD)
 	}
 }
 
@@ -180,7 +173,6 @@ func TestSaveAndLoadConfigWithEnvOverride(t *testing.T) {
 
 	cfg := &GlobalConfig{
 		GitHubUsername: "env-override-user",
-		RiskThreshold:  6,
 		MaxBudgetUSD:   12.5,
 		LogLevel:       "debug",
 		ClaudeModel:    "opus",

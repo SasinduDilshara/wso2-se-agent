@@ -15,8 +15,7 @@ func TestSaveAndLoad(t *testing.T) {
 		Status:  StatusSuccess,
 		CostUSD: 2.29,
 	}
-	score := 4
-	ws.RiskScore = &score
+	ws.RiskVerdict = "GO"
 
 	if err := Save(dir, ws); err != nil {
 		t.Fatalf("Save failed: %v", err)
@@ -46,8 +45,8 @@ func TestSaveAndLoad(t *testing.T) {
 	if loaded.PhaseSucceeded("verify") {
 		t.Error("expected verify to not be succeeded")
 	}
-	if loaded.RiskScore == nil || *loaded.RiskScore != 4 {
-		t.Errorf("RiskScore: got %v, want 4", loaded.RiskScore)
+	if loaded.RiskVerdict != "GO" {
+		t.Errorf("RiskVerdict: got %q, want %q", loaded.RiskVerdict, "GO")
 	}
 	if loaded.Phases["reproduce"].CostUSD != 2.29 {
 		t.Errorf("CostUSD: got %f, want 2.29", loaded.Phases["reproduce"].CostUSD)

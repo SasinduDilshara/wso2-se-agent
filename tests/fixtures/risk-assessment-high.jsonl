@@ -1,4 +1,4 @@
 {"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Assessing risk for issue #9999..."}},"session_id":"test-session"}
 {"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":".ai/ia-9999.md"}}]},"session_id":"test-session"}
-{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":".ai/risk-assessment-9999.md","content":"# Risk Assessment\n\nRisk Score: 9/10 (Critical)"}}]},"session_id":"test-session"}
-{"type":"result","subtype":"success","is_error":false,"result":"Risk score: 9/10 (Critical). Database schema change. Hand off to human.","total_cost_usd":0.38,"session_id":"test-session"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":".ai/risk-assessment-9999.md","content":"# Risk Assessment — Issue #9999\n\n**Verdict:** NO-GO\n\nDatabase schema change. Hand off to human."}}]},"session_id":"test-session"}
+{"type":"result","subtype":"success","is_error":false,"result":"Verdict: NO-GO. Database schema change. Hand off to human.","total_cost_usd":0.38,"session_id":"test-session"}

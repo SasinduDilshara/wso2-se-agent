@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/Tharsanan1/wso2-se-agent/internal/script"
 	"github.com/Tharsanan1/wso2-se-agent/internal/state"
 )
+
+var riskVerdictRE = regexp.MustCompile(`(?m)^\*\*Verdict:\*\*\s*(GO|REVIEW REQUIRED|NO-GO)\b`)
 
 type Engine struct {
 	registry *Registry
@@ -105,20 +108,39 @@ func (e *Engine) Run(ctx *PhaseContext, phases []Phase) error {
 
 		// Risk gate (special handling after risk-assessment)
 		if p.Name() == "risk-assessment" {
-			if score, ok := result.Metadata["risk_score"]; ok {
-				scoreInt := int(score.(float64))
-				ctx.State.RiskScore = &scoreInt
+			artifactPath := filepath.Join(ctx.Workspace, ".ai", fmt.Sprintf("risk-assessment-%s.md", ctx.IssueNumber))
+			body, readErr := os.ReadFile(artifactPath)
+			if readErr != nil {
+				result.Status = state.StatusFailed
+				result.Error = fmt.Sprintf("risk-assessment artifact missing: %s", artifactPath)
+				ctx.State.Phases[p.Name()] = result
 				state.Save(ctx.Workspace, ctx.State)
-
-				if scoreInt > ctx.RiskThreshold {
-					ctx.Printer.RiskGateBlocked(scoreInt, ctx.RiskThreshold)
-					result.Status = state.StatusGated
-					ctx.State.Phases[p.Name()] = result
-					state.Save(ctx.Workspace, ctx.State)
-					return fmt.Errorf("risk score %d exceeds threshold %d — pipeline halted for human review", scoreInt, ctx.RiskThreshold)
-				}
-				ctx.Printer.RiskGatePass(scoreInt, ctx.RiskThreshold)
+				ctx.Printer.PhaseFailed(p.Name(), result.Error)
+				return fmt.Errorf("%s", result.Error)
 			}
+			match := riskVerdictRE.FindSubmatch(body)
+			if match == nil {
+				result.Status = state.StatusFailed
+				result.Error = fmt.Sprintf("risk-assessment artifact missing verdict line: %s", artifactPath)
+				ctx.State.Phases[p.Name()] = result
+				state.Save(ctx.Workspace, ctx.State)
+				ctx.Printer.PhaseFailed(p.Name(), result.Error)
+				return fmt.Errorf("%s", result.Error)
+			}
+			verdict := string(match[1])
+			ctx.State.RiskVerdict = verdict
+			if err := state.Save(ctx.Workspace, ctx.State); err != nil {
+				return fmt.Errorf("failed to save state: %w", err)
+			}
+
+			if verdict != "GO" {
+				ctx.Printer.RiskGateBlocked(verdict, artifactPath)
+				result.Status = state.StatusGated
+				ctx.State.Phases[p.Name()] = result
+				state.Save(ctx.Workspace, ctx.State)
+				return fmt.Errorf("risk-assessment verdict %s — pipeline halted for human review. Review %s and resume with --from fix", verdict, artifactPath)
+			}
+			ctx.Printer.RiskGatePass(verdict)
 		}
 
 		// Pause for review between AI phases (unless --yes)

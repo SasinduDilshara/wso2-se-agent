@@ -26,7 +26,6 @@ var (
 	toPhase       string
 	yes           bool
 	dryRun        bool
-	riskThreshold int
 	maxBudgetUSD  float64
 	packPath      string
 	modelOverride string
@@ -50,7 +49,6 @@ func init() {
 	runCmd.Flags().StringVar(&toPhase, "to", "", "Stop after this phase")
 	runCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmations (risk gate still applies)")
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show the plan without executing")
-	runCmd.Flags().IntVar(&riskThreshold, "risk-threshold", -1, "Risk score threshold (0-10, default from config)")
 	runCmd.Flags().Float64Var(&maxBudgetUSD, "max-budget-usd", 0, "Max budget per phase in USD")
 	runCmd.Flags().StringVar(&packPath, "pack", "", "Path to product pack zip file")
 	runCmd.Flags().StringVar(&modelOverride, "model", "", "Claude model to use for every AI phase (overrides config; empty = use config)")
@@ -101,12 +99,6 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load workspace state: %w", err)
 	}
 
-	// Resolve risk threshold
-	threshold := globalCfg.RiskThreshold
-	if riskThreshold >= 0 {
-		threshold = riskThreshold
-	}
-
 	// Resolve max budget
 	budget := globalCfg.MaxBudgetUSD
 	if maxBudgetUSD > 0 {
@@ -140,7 +132,7 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 	ctx := phase.NewPhaseContext(
 		wsPath, issueURL, iss.Number,
 		productCfg, globalCfg, repoReg, ws,
-		yes, budget, threshold, packPath, modelOverride, verbose,
+		yes, budget, packPath, modelOverride, verbose,
 	)
 
 	// Collect phase names for display
@@ -159,7 +151,6 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  [%d/%d] %s (%s)\n", i+1, len(phases), p.Name(), p.Type())
 		}
 		fmt.Printf("\nWorkspace: %s\n", wsPath)
-		fmt.Printf("Risk threshold: %d\n", threshold)
 		fmt.Printf("Max budget/phase: $%.2f\n", budget)
 		return nil
 	}

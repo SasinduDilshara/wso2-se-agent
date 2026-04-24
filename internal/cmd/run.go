@@ -25,11 +25,12 @@ var (
 	fromPhase     string
 	toPhase       string
 	yes           bool
-	dryRun        bool
-	maxBudgetUSD  float64
-	packPath      string
-	modelOverride string
-	noSkillsCache bool
+	dryRun             bool
+	maxBudgetUSD       float64
+	maxTotalBudgetUSD  float64
+	packPath           string
+	modelOverride      string
+	noSkillsCache      bool
 )
 
 var runCmd = &cobra.Command{
@@ -51,6 +52,7 @@ func init() {
 	runCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmations (risk gate still applies)")
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show the plan without executing")
 	runCmd.Flags().Float64Var(&maxBudgetUSD, "max-budget-usd", 0, "Max budget per phase in USD")
+	runCmd.Flags().Float64Var(&maxTotalBudgetUSD, "max-total-budget-usd", 0, "Cumulative USD cap across the whole workspace — counts prior spend recorded in state.json and halts the pipeline when exceeded. 0 = no total cap.")
 	runCmd.Flags().StringVar(&packPath, "pack", "", "Path to product pack zip file")
 	runCmd.Flags().StringVar(&modelOverride, "model", "", "Claude model to use for every AI phase (overrides config; empty = use config)")
 	runCmd.Flags().BoolVar(&noSkillsCache, "no-skills-cache", false, "Force a fresh download of skills repos (overrides skills_cache in global config)")
@@ -133,7 +135,7 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 	ctx := phase.NewPhaseContext(
 		wsPath, issueURL, iss.Number,
 		productCfg, globalCfg, repoReg, ws,
-		yes, budget, packPath, modelOverride, verbose,
+		yes, budget, maxTotalBudgetUSD, packPath, modelOverride, verbose,
 	)
 
 	// Collect phase names for display

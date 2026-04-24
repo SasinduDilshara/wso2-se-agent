@@ -23,52 +23,36 @@ var riskVerdictRE = regexp.MustCompile(`(?m)^\*\*Verdict:\*\*\s*(GO|REVIEW REQUI
 // re-rendering it as an `Error:` at the outer layer.
 var ErrRiskGateHalt = errors.New("risk gate halted pipeline for human review")
 
-// extractVerdictReason pulls a short human-readable paragraph from the
-// risk-assessment artifact so the CLI can print WHY the gate blocked without
-// forcing the user to open the file. It looks for the first non-empty,
-// non-heading text block after the `**Verdict:** <verdict>` line and returns
-// it joined with single spaces, truncated to `limit` characters. Returns "" if
-// nothing suitable is found so callers can decide whether to print a hint.
+// extractVerdictReason pulls the one-line reason the risk-assessment skill
+// writes right after its closing verdict marker, e.g.
+//
+//	**REVIEW REQUIRED.** The fix is a mechanical back-port of … No NO-GO
+//	forcing rule fires.
+//
+// The marker is literally `**<verdict>.**` — same verdict string the gate
+// already matched in riskVerdictRE above. Everything from the end of that
+// marker up to the next newline is the reason; trim, truncate to `limit`
+// on a word boundary, done.
+//
+// Returns "" when the marker is missing (printer then silently omits the
+// `Why:` line, which is the safe degrade). There is intentionally no
+// fallback strategy — a wrong excerpt is worse than no excerpt. The previous
+// "first paragraph after the **Verdict:** line" heuristic was dropped
+// because some artifacts put a meta-line like `**Inputs:** ia.md y, plan.md y`
+// first, and the user then saw that garbled string as the "Why".
 func extractVerdictReason(body []byte, verdict string, limit int) string {
-	lines := strings.Split(string(body), "\n")
-
-	verdictIdx := -1
-	for i, line := range lines {
-		if strings.Contains(line, "**Verdict:**") && strings.Contains(line, verdict) {
-			verdictIdx = i
-			break
-		}
-	}
-	if verdictIdx < 0 {
+	marker := "**" + verdict + ".**"
+	idx := strings.Index(string(body), marker)
+	if idx < 0 {
 		return ""
 	}
-
-	var buf []string
-	for i := verdictIdx + 1; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		// Skip empties until we've found something; once we have collected
-		// content, an empty line ends the paragraph.
-		if line == "" {
-			if len(buf) > 0 {
-				break
-			}
-			continue
-		}
-		// Stop at the next heading unless we haven't collected anything —
-		// then skip it and keep scanning so `## Recommendation` headers
-		// above the real prose are not a dead end.
-		if strings.HasPrefix(line, "#") {
-			if len(buf) > 0 {
-				break
-			}
-			continue
-		}
-		buf = append(buf, line)
+	rest := string(body)[idx+len(marker):]
+	end := strings.IndexByte(rest, '\n')
+	if end < 0 {
+		end = len(rest)
 	}
-
-	reason := strings.TrimSpace(strings.Join(buf, " "))
+	reason := strings.TrimSpace(rest[:end])
 	if limit > 0 && len(reason) > limit {
-		// Truncate on a word boundary where possible.
 		cutoff := limit
 		if space := strings.LastIndex(reason[:limit], " "); space > limit*3/4 {
 			cutoff = space

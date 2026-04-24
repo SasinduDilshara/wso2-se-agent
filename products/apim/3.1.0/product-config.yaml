@@ -37,5 +37,5 @@ skip_phases: []
 
 skills_repo: "Tharsanan1/wso2-se-agent-skills"
 skills_branch: "main"
-skills_ref: "api-manager-specific/v5"
+skills_ref: "skills"
 claude_md_url: "https://github.com/Tharsanan1/wso2-se-agent-skills/blob/main/api-manager-specific/v5/CLAUDE.md"

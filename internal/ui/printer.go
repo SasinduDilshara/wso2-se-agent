@@ -54,16 +54,19 @@ func (p *Printer) RiskGatePass(verdict string) {
 // asked to review the artifact and decide. Output is deliberately
 // instructional (yellow "attention", not red "error"): a header, a short
 // "Why" excerpt pulled from the artifact so the user sees the reasoning
-// before opening the file, the artifact path, and the exact resume command.
+// before opening the file, the artifact path, and the exact, fully-formed
+// resume command they can paste back into the shell.
 //
 // `reason` may be empty; in that case the "Why:" line is skipped.
-func (p *Printer) RiskGateBlocked(verdict, artifactPath, reason string) {
+// `resumeCmd` should be the complete command (no ellipsis) the caller built
+// from the PhaseContext.
+func (p *Printer) RiskGateBlocked(verdict, artifactPath, reason, resumeCmd string) {
 	fmt.Printf("\n  %s\u25b8 Review required%s  \u2014 verdict: %s\n", Yellow, Reset, verdict)
 	if reason != "" {
 		fmt.Printf("    Why:     %s\n", reason)
 	}
 	fmt.Printf("    Review:  %s\n", artifactPath)
-	fmt.Printf("    Resume:  wso2-se-agent fix ... --from fix\n")
+	fmt.Printf("    Resume:  %s\n", resumeCmd)
 }
 
 func (p *Printer) Info(msg string) {

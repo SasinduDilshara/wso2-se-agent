@@ -27,7 +27,7 @@ func (p *VerifyPhase) Preconditions(ctx *phase.PhaseContext) error {
 
 func (p *VerifyPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
 	prompt := fmt.Sprintf("/verify-fix %s", ctx.IssueURL)
-	return p.runner.RunAIPhase(ctx, "verify", prompt, 0)
+	return p.runner.RunAIPhase(ctx, "verify", prompt, 0, nil)
 }
 
 func (p *VerifyPhase) ExpectedArtifacts() []string {

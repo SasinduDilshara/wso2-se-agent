@@ -27,7 +27,7 @@ func (p *TestCoveragePhase) Preconditions(ctx *phase.PhaseContext) error {
 
 func (p *TestCoveragePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
 	prompt := fmt.Sprintf("/create-tests %s", ctx.IssueNumber)
-	return p.runner.RunAIPhase(ctx, "test-coverage", prompt, 0)
+	return p.runner.RunAIPhase(ctx, "test-coverage", prompt, 0, nil)
 }
 
 func (p *TestCoveragePhase) ExpectedArtifacts() []string {

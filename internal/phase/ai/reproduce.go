@@ -24,7 +24,7 @@ func (p *ReproducePhase) Preconditions(ctx *phase.PhaseContext) error {
 
 func (p *ReproducePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
 	prompt := fmt.Sprintf("/reproduce %s", ctx.IssueURL)
-	return p.runner.RunAIPhase(ctx, "reproduce", prompt, 0)
+	return p.runner.RunAIPhase(ctx, "reproduce", prompt, 0, nil)
 }
 
 func (p *ReproducePhase) ExpectedArtifacts() []string {

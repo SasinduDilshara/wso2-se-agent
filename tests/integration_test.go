@@ -700,6 +700,197 @@ func TestConfigInit_WritesToWSEConfigDir(t *testing.T) {
 	}
 }
 
+// setupRiskOrPRTestWorkspace creates a workspace with the static phases + the
+// upstream AI phases already marked successful, so we can drive just the
+// risk-assessment or pr phase against a fixture. Returns the workspace path
+// and the resolved CLI binary path.
+func setupRiskOrPRTestWorkspace(t *testing.T, env *testutil.TestEnv, completedPhases []string) (string, string) {
+	t.Helper()
+
+	wsPath := filepath.Join(env.WorkspaceDir, "apim-issues-9999")
+	os.MkdirAll(filepath.Join(wsPath, ".ai", "logs"), 0755)
+	os.MkdirAll(filepath.Join(wsPath, ".wse"), 0755)
+	for _, skillName := range []string{"risk-assessment", "pr"} {
+		os.MkdirAll(filepath.Join(wsPath, ".claude", "skills", skillName), 0755)
+		os.WriteFile(filepath.Join(wsPath, ".claude", "skills", skillName, "SKILL.md"), []byte("# "+skillName), 0644)
+	}
+
+	ws := state.New("https://github.com/wso2/product-apim/issues/9999", "9999", "apim", "latest")
+	for _, name := range completedPhases {
+		ws.Phases[name] = &state.PhaseResult{Status: state.StatusSuccess}
+	}
+	state.Save(wsPath, ws)
+
+	env.WriteConfig(fmt.Sprintf(`
+github_username: testuser
+risk_threshold: 7
+max_budget_usd: 15.0
+workspace_root: %s
+`, env.WorkspaceDir))
+	env.WriteRepos(`repos: {}`)
+	env.WriteProductConfig("apim", "latest", `
+product: apim
+version: latest
+repos: []
+phase_limits:
+  risk-assessment: 5.0
+  pr: 5.0
+skills_repo: "test/test"
+skills_branch: "main"
+skills_ref: "test"
+`)
+
+	return wsPath, buildCLI(t)
+}
+
+func TestRiskGate_BlocksWhenScoreExceedsThreshold(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	defer env.Cleanup()
+
+	wsPath, binPath := setupRiskOrPRTestWorkspace(t, env,
+		[]string{"prereq", "workspace", "skills", "reproduce", "plan"})
+
+	cmd := exec.Command(binPath, "run",
+		"--product", "apim",
+		"--version", "latest",
+		"--issue", "https://github.com/wso2/product-apim/issues/9999",
+		"--pack", "/dev/null",
+		"--phase", "risk-assessment",
+		"--yes",
+	)
+	cmd.Dir = wsPath
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"PATH="+env.MocksDir+":"+env.OrigPath,
+		"WSE_MOCK_CLAUDE_FIXTURE="+env.FixturePath("risk-assessment-high.jsonl"),
+	)
+
+	output, err := cmd.CombinedOutput()
+	// The CLI must exit non-zero because the risk gate must halt the pipeline.
+	if err == nil {
+		t.Fatalf("CLI should have exited non-zero (gate should block). output:\n%s", string(output))
+	}
+	outStr := string(output)
+	if !strings.Contains(outStr, "9") || !strings.Contains(strings.ToLower(outStr), "risk") {
+		t.Errorf("expected the error to mention the score and 'risk', got:\n%s", outStr)
+	}
+
+	ws, err := state.Load(wsPath)
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+	// Top-level risk_score must be populated (the whole point of issue #16).
+	if ws.RiskScore == nil {
+		t.Fatal("state.RiskScore should be non-nil after risk-assessment runs")
+	}
+	if *ws.RiskScore != 9 {
+		t.Errorf("state.RiskScore: got %d, want 9", *ws.RiskScore)
+	}
+	// Phase metadata must also have the score.
+	rp := ws.Phases["risk-assessment"]
+	if rp == nil {
+		t.Fatal("risk-assessment phase result missing")
+	}
+	score, ok := rp.Metadata["risk_score"]
+	if !ok {
+		t.Fatal("risk-assessment metadata must contain risk_score")
+	}
+	// JSON round-trip makes this float64.
+	if f, ok := score.(float64); !ok || f != 9 {
+		t.Errorf("metadata[risk_score]: got %v (%T), want 9 (float64)", score, score)
+	}
+	// And the phase status should be "gated" (not "success") so a follow-up
+	// `status` makes the halt obvious.
+	if rp.Status != state.StatusGated {
+		t.Errorf("risk-assessment status: got %q, want %q", rp.Status, state.StatusGated)
+	}
+}
+
+func TestRiskGate_PassesWhenScoreBelowThreshold(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	defer env.Cleanup()
+
+	wsPath, binPath := setupRiskOrPRTestWorkspace(t, env,
+		[]string{"prereq", "workspace", "skills", "reproduce", "plan"})
+
+	cmd := exec.Command(binPath, "run",
+		"--product", "apim",
+		"--version", "latest",
+		"--issue", "https://github.com/wso2/product-apim/issues/9999",
+		"--pack", "/dev/null",
+		"--phase", "risk-assessment",
+		"--yes",
+	)
+	cmd.Dir = wsPath
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"PATH="+env.MocksDir+":"+env.OrigPath,
+		"WSE_MOCK_CLAUDE_FIXTURE="+env.FixturePath("risk-assessment-low.jsonl"),
+	)
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("CLI should pass the gate with a low score. output:\n%s", string(output))
+	}
+
+	ws, err := state.Load(wsPath)
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+	if ws.RiskScore == nil {
+		t.Fatal("state.RiskScore should be populated even when the gate passes")
+	}
+	if *ws.RiskScore != 3 {
+		t.Errorf("state.RiskScore: got %d, want 3", *ws.RiskScore)
+	}
+	if ws.Phases["risk-assessment"].Status != state.StatusSuccess {
+		t.Errorf("risk-assessment status: got %q, want success", ws.Phases["risk-assessment"].Status)
+	}
+}
+
+func TestPRPhase_PopulatesPRURL(t *testing.T) {
+	env := testutil.NewTestEnv(t)
+	defer env.Cleanup()
+
+	wsPath, binPath := setupRiskOrPRTestWorkspace(t, env,
+		[]string{"prereq", "workspace", "skills", "reproduce", "plan", "risk-assessment", "fix", "verify", "test-coverage"})
+
+	cmd := exec.Command(binPath, "run",
+		"--product", "apim",
+		"--version", "latest",
+		"--issue", "https://github.com/wso2/product-apim/issues/9999",
+		"--pack", "/dev/null",
+		"--phase", "pr",
+		"--yes",
+	)
+	cmd.Dir = wsPath
+	cmd.Env = append(os.Environ(),
+		"HOME="+env.RootDir,
+		"GOPATH="+os.Getenv("GOPATH"),
+		"PATH="+env.MocksDir+":"+env.OrigPath,
+		"WSE_MOCK_CLAUDE_FIXTURE="+env.FixturePath("pr-output.jsonl"),
+	)
+
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("pr phase failed: %v\n%s", err, string(output))
+	}
+
+	ws, err := state.Load(wsPath)
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+	wantURL := "https://github.com/wso2-support/carbon-apimgt/pull/8141"
+	if ws.PRURL != wantURL {
+		t.Errorf("state.PRURL: got %q, want %q", ws.PRURL, wantURL)
+	}
+	// Also check phase metadata.
+	md := ws.Phases["pr"].Metadata
+	if md["pr_url"] != wantURL {
+		t.Errorf("metadata[pr_url]: got %v, want %q", md["pr_url"], wantURL)
+	}
+}
+
 // runReproduceWithModelSettings drives one `run --phase reproduce` against the
 // mock claude, with the given --model flag and per-phase / global model config,
 // and returns the arg list the mock received.

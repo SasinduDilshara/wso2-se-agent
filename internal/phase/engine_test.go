@@ -14,85 +14,66 @@ func TestExtractVerdictReason(t *testing.T) {
 		want    string
 	}{
 		{
-			name: "first paragraph after verdict line",
-			body: `# Risk Assessment
+			name: "reason on the same line as the bold marker",
+			body: `**Verdict:** REVIEW REQUIRED
+**Inputs:** ia-16437.md y, plan-16437.md y
 
-**Verdict:** REVIEW REQUIRED
+## Recommendation
 
-The fix is a mechanical, surgical backport of an already-merged upstream PR.
-Blast radius is low and the root cause is fully understood.
-
-## Fields`,
+**REVIEW REQUIRED.** The fix is a mechanical, surgical backport. No NO-GO forcing rule fires.
+`,
 			verdict: "REVIEW REQUIRED",
 			limit:   500,
-			want:    "The fix is a mechanical, surgical backport of an already-merged upstream PR. Blast radius is low and the root cause is fully understood.",
+			want:    "The fix is a mechanical, surgical backport. No NO-GO forcing rule fires.",
 		},
 		{
-			name: "skips leading heading then grabs prose",
+			name: "NO-GO marker with its own reason",
 			body: `**Verdict:** NO-GO
 
-## Why
-This touches the auth layer; out of scope for autofix.`,
+## Recommendation
+
+**NO-GO.** Touches the auth layer; out of scope for autofix.
+`,
 			verdict: "NO-GO",
 			limit:   500,
-			want:    "This touches the auth layer; out of scope for autofix.",
+			want:    "Touches the auth layer; out of scope for autofix.",
 		},
 		{
-			name: "truncates on a word boundary with ellipsis",
-			body: `**Verdict:** REVIEW REQUIRED
-
-` + strings.Repeat("one two three four five ", 20),
+			name:    "reason ends at EOF (no trailing newline)",
+			body:    `**REVIEW REQUIRED.** Prose without a trailing newline`,
+			verdict: "REVIEW REQUIRED",
+			limit:   500,
+			want:    "Prose without a trailing newline",
+		},
+		{
+			name:    "truncates on a word boundary with ellipsis",
+			body:    `**REVIEW REQUIRED.** ` + strings.Repeat("one two three four five ", 20),
 			verdict: "REVIEW REQUIRED",
 			limit:   60,
 			want:    "one two three four five one two three four five one two…",
 		},
 		{
-			name: "returns empty when verdict line not present",
-			body: `Some random markdown with no verdict marker.
-
-More text follows.`,
-			verdict: "GO",
+			name:    "returns empty when marker is missing",
+			body:    "## Risk Assessment\n\nSome prose without the bold marker.\n",
+			verdict: "REVIEW REQUIRED",
 			limit:   500,
 			want:    "",
 		},
 		{
-			name: "returns empty when verdict mismatches",
-			body: `**Verdict:** GO
-
-Looks fine.`,
-			verdict: "NO-GO",
-			limit:   500,
-			want:    "",
-		},
-		{
-			name: "handles verdict line at end of file (nothing to extract)",
-			body: `**Verdict:** REVIEW REQUIRED
+			name: "returns empty when marker is the wrong verdict",
+			body: `**GO.** Safe.
 `,
 			verdict: "REVIEW REQUIRED",
 			limit:   500,
 			want:    "",
 		},
 		{
-			name: "no limit when limit is zero",
-			body: `**Verdict:** REVIEW REQUIRED
-
-A very long reason that should not be truncated at all.`,
+			name: "limit of zero means no truncation",
+			body: `**REVIEW REQUIRED.** A very long reason that should not be truncated at all.
+`,
 			verdict: "REVIEW REQUIRED",
 			limit:   0,
 			want:    "A very long reason that should not be truncated at all.",
-		},
-		{
-			name: "joins multi-line paragraph with single spaces",
-			body: `**Verdict:** REVIEW REQUIRED
-
-Line one.
-Line two.
-Line three.
-
-## Next section`,
-			verdict: "REVIEW REQUIRED",
-			limit:   500,
-			want:    "Line one. Line two. Line three.",
 		},
 	}
 

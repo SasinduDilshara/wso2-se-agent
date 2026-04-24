@@ -736,7 +736,7 @@ skills_ref: "test"
 	return wsPath, buildCLI(t)
 }
 
-func TestRiskGate_BlocksWhenScoreExceedsThreshold(t *testing.T) {
+func TestRiskGate_BlocksWhenVerdictNotGO(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	defer env.Cleanup()
 
@@ -765,42 +765,31 @@ func TestRiskGate_BlocksWhenScoreExceedsThreshold(t *testing.T) {
 		t.Fatalf("CLI should have exited non-zero (gate should block). output:\n%s", string(output))
 	}
 	outStr := string(output)
-	if !strings.Contains(outStr, "9") || !strings.Contains(strings.ToLower(outStr), "risk") {
-		t.Errorf("expected the error to mention the score and 'risk', got:\n%s", outStr)
+	if !strings.Contains(outStr, "NO-GO") || !strings.Contains(strings.ToLower(outStr), "verdict") {
+		t.Errorf("expected the error to mention 'NO-GO' and 'verdict', got:\n%s", outStr)
 	}
 
 	ws, err := state.Load(wsPath)
 	if err != nil {
 		t.Fatalf("load state: %v", err)
 	}
-	// Top-level risk_score must be populated (the whole point of issue #16).
-	if ws.RiskScore == nil {
-		t.Fatal("state.RiskScore should be non-nil after risk-assessment runs")
+	// Top-level risk_verdict must be populated after the gate has read the
+	// artifact (this is what the engine asserts on in engine.go).
+	if ws.RiskVerdict != "NO-GO" {
+		t.Errorf("state.RiskVerdict: got %q, want %q", ws.RiskVerdict, "NO-GO")
 	}
-	if *ws.RiskScore != 9 {
-		t.Errorf("state.RiskScore: got %d, want 9", *ws.RiskScore)
-	}
-	// Phase metadata must also have the score.
 	rp := ws.Phases["risk-assessment"]
 	if rp == nil {
 		t.Fatal("risk-assessment phase result missing")
 	}
-	score, ok := rp.Metadata["risk_score"]
-	if !ok {
-		t.Fatal("risk-assessment metadata must contain risk_score")
-	}
-	// JSON round-trip makes this float64.
-	if f, ok := score.(float64); !ok || f != 9 {
-		t.Errorf("metadata[risk_score]: got %v (%T), want 9 (float64)", score, score)
-	}
-	// And the phase status should be "gated" (not "success") so a follow-up
-	// `status` makes the halt obvious.
+	// On a non-GO verdict the phase status must be "gated" (not "failed" or
+	// "success") so a follow-up `status` makes the halt obvious.
 	if rp.Status != state.StatusGated {
 		t.Errorf("risk-assessment status: got %q, want %q", rp.Status, state.StatusGated)
 	}
 }
 
-func TestRiskGate_PassesWhenScoreBelowThreshold(t *testing.T) {
+func TestRiskGate_PassesWhenVerdictGO(t *testing.T) {
 	env := testutil.NewTestEnv(t)
 	defer env.Cleanup()
 
@@ -824,18 +813,15 @@ func TestRiskGate_PassesWhenScoreBelowThreshold(t *testing.T) {
 	)
 
 	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("CLI should pass the gate with a low score. output:\n%s", string(output))
+		t.Fatalf("CLI should pass the gate on a GO verdict. output:\n%s", string(output))
 	}
 
 	ws, err := state.Load(wsPath)
 	if err != nil {
 		t.Fatalf("load state: %v", err)
 	}
-	if ws.RiskScore == nil {
-		t.Fatal("state.RiskScore should be populated even when the gate passes")
-	}
-	if *ws.RiskScore != 3 {
-		t.Errorf("state.RiskScore: got %d, want 3", *ws.RiskScore)
+	if ws.RiskVerdict != "GO" {
+		t.Errorf("state.RiskVerdict: got %q, want %q", ws.RiskVerdict, "GO")
 	}
 	if ws.Phases["risk-assessment"].Status != state.StatusSuccess {
 		t.Errorf("risk-assessment status: got %q, want success", ws.Phases["risk-assessment"].Status)

@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 )
 
 type Options struct {
@@ -26,7 +28,24 @@ type InvocationResult struct {
 	ExitCode     int
 	TotalCostUSD float64
 	ResultText   string
+	// Subtype mirrors the top-level "subtype" field of claude's final `result`
+	// envelope ("success", "error_max_tokens", etc.).
+	Subtype string
+	// SawSuccess is true once a `"type":"result","subtype":"success"` envelope
+	// has been observed on the stream. When set, the caller treats any
+	// subsequent non-zero exit from the claude subprocess as a cleanup
+	// anomaly rather than a phase failure.
+	SawSuccess bool
 }
+
+// gracePeriodAfterSuccess gives claude time to flush and exit cleanly after it
+// emits the success envelope. If it is still alive after that, the invoker
+// escalates SIGTERM → SIGKILL so wso2-se-agent does not wait forever on a
+// subprocess that has already signalled completion.
+const (
+	gracePeriodAfterSuccess = 10 * time.Second
+	termToKillDelay         = 5 * time.Second
+)
 
 type Invoker struct {
 	Binary string
@@ -71,11 +90,22 @@ func (inv *Invoker) Invoke(opts Options, logDir string, issueNumber, phaseName, 
 		return nil, fmt.Errorf("failed to start claude: %w", err)
 	}
 
-	// Process the stream
-	result := processStream(stdout, processedLog, rawLog)
+	// Process the stream. If the success envelope arrives and claude still
+	// hasn't closed stdout after the grace window (observed with
+	// `-p --output-format stream-json`), escalate signals so we don't hang.
+	proc := cmd.Process
+	onSuccess := func() {
+		if proc != nil {
+			go watchdogAfterSuccess(proc)
+		}
+	}
+	result := processStream(stdout, processedLog, rawLog, onSuccess)
 
-	// Wait for completion
-	if err := cmd.Wait(); err != nil {
+	// Wait for completion. If we already saw the success envelope, treat any
+	// non-zero exit (e.g. 143 from our own SIGTERM, or any other cleanup-time
+	// failure) as a clean completion — the authoritative signal was the
+	// envelope, not the exit code.
+	if err := cmd.Wait(); err != nil && !result.SawSuccess {
 		result.ExitCode = 1
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
@@ -83,6 +113,30 @@ func (inv *Invoker) Invoke(opts Options, logDir string, issueNumber, phaseName, 
 	}
 
 	return result, nil
+}
+
+// watchdogAfterSuccess waits out a grace window after the success envelope,
+// then escalates SIGTERM → SIGKILL if claude is still running. All signal
+// errors are ignored: if the process has already exited, Signal returns
+// ESRCH/os.ErrProcessDone, which is exactly the state we want.
+func watchdogAfterSuccess(proc *os.Process) {
+	time.Sleep(gracePeriodAfterSuccess)
+	if !processAlive(proc) {
+		return
+	}
+	_ = proc.Signal(syscall.SIGTERM)
+	time.Sleep(termToKillDelay)
+	if !processAlive(proc) {
+		return
+	}
+	_ = proc.Kill()
+}
+
+// processAlive returns true if the process can still be signalled. It uses
+// the kill(pid, 0) pattern: signal 0 delivers nothing but performs the
+// permission and existence checks.
+func processAlive(proc *os.Process) bool {
+	return proc.Signal(syscall.Signal(0)) == nil
 }
 
 func (inv *Invoker) buildArgs(opts Options) []string {
@@ -113,7 +167,11 @@ func (inv *Invoker) buildArgs(opts Options) []string {
 	return args
 }
 
-func processStream(r io.Reader, processedLog, rawLog *os.File) *InvocationResult {
+// processStream consumes claude's stream-json output. onSuccess, if non-nil,
+// is invoked exactly once — the first time a `"type":"result","subtype":"success"`
+// envelope is observed. The caller uses that hook to start a watchdog that
+// terminates claude if it hangs after declaring success.
+func processStream(r io.Reader, processedLog, rawLog *os.File, onSuccess func()) *InvocationResult {
 	result := &InvocationResult{}
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer
@@ -143,6 +201,10 @@ func processStream(r io.Reader, processedLog, rawLog *os.File) *InvocationResult
 			handleAssistantMessage(msg, processedLog)
 		case "result":
 			handleResultMessage(msg, processedLog, result)
+			if result.SawSuccess && onSuccess != nil {
+				onSuccess()
+				onSuccess = nil // latch: fire at most once per invocation
+			}
 		}
 	}
 
@@ -215,6 +277,13 @@ func handleAssistantMessage(msg map[string]any, logFile *os.File) {
 
 
 func handleResultMessage(msg map[string]any, logFile *os.File, result *InvocationResult) {
+	if subtype, ok := msg["subtype"].(string); ok {
+		result.Subtype = subtype
+		if subtype == "success" {
+			result.SawSuccess = true
+		}
+	}
+
 	if resultText, ok := msg["result"].(string); ok {
 		result.ResultText = resultText
 		out := fmt.Sprintf("\n%s%s%s\n", colorGreen, resultText, colorReset)

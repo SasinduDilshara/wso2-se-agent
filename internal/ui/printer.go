@@ -49,10 +49,21 @@ func (p *Printer) RiskGatePass(verdict string) {
 	fmt.Printf("  %s\u25b8%s  pass  \u2014 verdict: %s, auto-proceeding\n", Green, Reset, verdict)
 }
 
-func (p *Printer) RiskGateBlocked(verdict, artifactPath string) {
-	fmt.Printf("\n  %s\u25b8%s  %sBLOCKED%s  \u2014 verdict: %s\n", Red, Reset, BoldRed, Reset, verdict)
-	fmt.Printf("    Review: %s\n", artifactPath)
-	fmt.Printf("    Resume with: wso2-se-agent fix ... --from fix\n")
+// RiskGateBlocked renders the end-of-phase notice when risk-assessment halts
+// the pipeline with a non-GO verdict. It is NOT an error \u2014 the user is being
+// asked to review the artifact and decide. Output is deliberately
+// instructional (yellow "attention", not red "error"): a header, a short
+// "Why" excerpt pulled from the artifact so the user sees the reasoning
+// before opening the file, the artifact path, and the exact resume command.
+//
+// `reason` may be empty; in that case the "Why:" line is skipped.
+func (p *Printer) RiskGateBlocked(verdict, artifactPath, reason string) {
+	fmt.Printf("\n  %s\u25b8 Review required%s  \u2014 verdict: %s\n", Yellow, Reset, verdict)
+	if reason != "" {
+		fmt.Printf("    Why:     %s\n", reason)
+	}
+	fmt.Printf("    Review:  %s\n", artifactPath)
+	fmt.Printf("    Resume:  wso2-se-agent fix ... --from fix\n")
 }
 
 func (p *Printer) Info(msg string) {

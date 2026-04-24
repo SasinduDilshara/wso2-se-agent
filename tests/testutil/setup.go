@@ -134,7 +134,7 @@ func (e *TestEnv) CreateSkillsTarball() string {
 		prefix + "skills/reproduce/SKILL.md":                        "---\nname: reproduce\n---\n# Generic Reproduce Skill\n",
 		prefix + "api-manager-specific/v4/skills/reproduce/SKILL.md": "---\nname: reproduce\n---\n# APIM Reproduce Skill\n",
 		prefix + "api-manager-specific/v4/skills/plan-fix/SKILL.md":  "---\nname: plan-fix\n---\n# Plan Fix Skill\n",
-		prefix + "api-manager-specific/v4/CLAUDE.md":                 "# WSO2 API Manager\n\nTest CLAUDE.md\n",
+		prefix + "api-manager-specific/v4/skills/CLAUDE.md":          "# WSO2 API Manager\n\nTest CLAUDE.md\n",
 	}
 
 	for name, content := range files {

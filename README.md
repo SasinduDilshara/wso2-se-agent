@@ -33,8 +33,8 @@ rm -rf ~/.wso2-se-agent
 # 1. Register your repo clones for a product (one-time setup)
 wso2-se-agent setup-repos --product apim --version latest
 
-# 2. Run against an issue
-wso2-se-agent run \
+# 2. Fix an issue
+wso2-se-agent fix \
   --product apim --version latest \
   --issue https://github.com/wso2/product-apim/issues/4856 \
   --pack /path/to/wso2am-4.4.0.zip

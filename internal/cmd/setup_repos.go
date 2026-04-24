@@ -198,7 +198,7 @@ func runSetupRepos(cmd *cobra.Command, args []string) error {
 
 	reposPath, _ := config.GetReposFilePath()
 	fmt.Printf("Repo registry saved to %s\n", reposPath)
-	fmt.Println("\nNext step: wso2-se-agent run --product " + setupProduct + " --version " + setupVersion + " --issue <github-issue-url> --pack <path-to-product-zip>")
+	fmt.Println("\nNext step: wso2-se-agent fix --product " + setupProduct + " --version " + setupVersion + " --issue <github-issue-url> --pack <path-to-product-zip>")
 	return nil
 }
 

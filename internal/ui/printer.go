@@ -52,7 +52,7 @@ func (p *Printer) RiskGatePass(verdict string) {
 func (p *Printer) RiskGateBlocked(verdict, artifactPath string) {
 	fmt.Printf("\n  %s\u25b8%s  %sBLOCKED%s  \u2014 verdict: %s\n", Red, Reset, BoldRed, Reset, verdict)
 	fmt.Printf("    Review: %s\n", artifactPath)
-	fmt.Printf("    Resume with: wso2-se-agent run ... --from fix\n")
+	fmt.Printf("    Resume with: wso2-se-agent fix ... --from fix\n")
 }
 
 func (p *Printer) Info(msg string) {

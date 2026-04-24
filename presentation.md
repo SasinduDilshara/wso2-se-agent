@@ -46,14 +46,16 @@ Stats, for context: ~42 Go files, ~4,160 lines in `internal/`. Biggest package i
 
 Six cobra commands. Walk through each.
 
-### `run` — the main pipeline
+### `fix` — the main pipeline
 
 ```bash
-wso2-se-agent run \
+wso2-se-agent fix \
   --product apim --version latest \
   --issue https://github.com/wso2/product-apim/issues/4856 \
   --pack /path/to/wso2am-4.4.0.zip
 ```
+
+*(Historical alias: `wso2-se-agent run` is kept as a hidden alias for backward compatibility.)*
 
 Key flags:
 
@@ -305,7 +307,7 @@ Order of operations when something goes wrong:
 2. `.wse/state.json` — full `PhaseResult` including metadata.
 3. `.ai/logs/issue-<N>-<phase>-<ts>.log` — what Claude was doing.
 4. `.ai/logs/issue-<N>-<phase>-<ts>.log-raw` — if the processed log is missing something; full JSON stream.
-5. Resume with `wso2-se-agent run --from <phase> ...` once the underlying issue is fixed.
+5. Resume with `wso2-se-agent fix --from <phase> ...` once the underlying issue is fixed.
 
 ---
 
@@ -325,9 +327,9 @@ Things worth pausing on when walking through this doc:
 ## Appendix — quick command reference
 
 ```bash
-wso2-se-agent run --product <p> --version <v> --issue <url> --pack <zip>
-wso2-se-agent run --from fix --to pr                  # resume
-wso2-se-agent run --dry-run                           # plan only
+wso2-se-agent fix --product <p> --version <v> --issue <url> --pack <zip>
+wso2-se-agent fix --from fix --to pr                  # resume
+wso2-se-agent fix --dry-run                           # plan only
 wso2-se-agent setup-repos --product <p> --version <v>
 wso2-se-agent status <workspace>
 wso2-se-agent clean <workspace> [--all]

@@ -33,10 +33,11 @@ var (
 )
 
 var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Run the issue-fixing pipeline",
-	Long:  "Run the phased pipeline to reproduce, assess, fix, verify, and PR a GitHub issue.",
-	RunE:  runPipeline,
+	Use:     "fix",
+	Aliases: []string{"run"}, // backward-compat: `run` was the original name
+	Short:   "Fix a GitHub issue with the AI pipeline",
+	Long:    "Run the phased pipeline to reproduce, assess, fix, verify, and PR a GitHub issue.",
+	RunE:    runPipeline,
 }
 
 func init() {
@@ -162,7 +163,7 @@ func runPipeline(cmd *cobra.Command, args []string) error {
 		if strings.Contains(err.Error(), "Resume with:") || strings.Contains(err.Error(), "pipeline halted") {
 			return err
 		}
-		return fmt.Errorf("%w\n\nResume with: wso2-se-agent run --product %s --version %s --issue %s --from <phase>",
+		return fmt.Errorf("%w\n\nResume with: wso2-se-agent fix --product %s --version %s --issue %s --from <phase>",
 			err, product, version, issueURL)
 	}
 

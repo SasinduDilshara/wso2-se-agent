@@ -165,8 +165,8 @@ If a phase has no script file, the CLI simply skips it — no script file means 
 # Register your repo clones
 wso2-se-agent setup-repos --product identity-server --version 7.0.0
 
-# Run against an issue
-wso2-se-agent run \
+# Fix an issue
+wso2-se-agent fix \
   --product identity-server --version 7.0.0 \
   --issue https://github.com/wso2/product-is/issues/1234 \
   --pack /path/to/wso2is-7.0.0.zip

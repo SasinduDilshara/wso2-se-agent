@@ -1,9 +1,80 @@
 package phase
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tharsanan1/wso2-se-agent/internal/config"
 )
+
+func TestShellQuote(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"", "''"},
+		{"simple", "simple"},
+		{"/usr/local/bin", "/usr/local/bin"},
+		{"https://github.com/org/repo/issues/1", "https://github.com/org/repo/issues/1"},
+		{"/path with spaces/file.zip", "'/path with spaces/file.zip'"},
+		{"has'apostrophe", `'has'\''apostrophe'`},
+		{"star*glob", "'star*glob'"},
+		{"dollar$var", "'dollar$var'"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			got := shellQuote(tc.in)
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBuildResumeCommand(t *testing.T) {
+	ctxWith := func(workspace string) *PhaseContext {
+		return &PhaseContext{
+			Workspace:   workspace,
+			IssueURL:    "https://github.com/wso2/product-apim/issues/4856",
+			IssueNumber: "4856",
+			PackPath:    "/path with spaces/wso2am-4.7.0.zip",
+			ProductConfig: &config.ProductConfig{
+				Product: "apim",
+				Version: "4.6.0",
+			},
+			GlobalConfig: &config.GlobalConfig{
+				WorkspaceRoot: "/Users/u/wse-workspaces",
+			},
+		}
+	}
+
+	t.Run("default workspace is omitted", func(t *testing.T) {
+		ctx := ctxWith(filepath.Join("/Users/u/wse-workspaces", "apim-issues-4856"))
+		got := buildResumeCommand(ctx, "fix")
+		want := "wso2-se-agent fix --product apim --version 4.6.0 --issue https://github.com/wso2/product-apim/issues/4856 --pack '/path with spaces/wso2am-4.7.0.zip' --from fix"
+		if got != want {
+			t.Errorf("got  %q\nwant %q", got, want)
+		}
+	})
+
+	t.Run("explicit workspace is emitted and quoted when it has spaces", func(t *testing.T) {
+		ctx := ctxWith("/my custom/workspace/apim-16437")
+		got := buildResumeCommand(ctx, "fix")
+		if !strings.Contains(got, "--workspace '/my custom/workspace/apim-16437'") {
+			t.Errorf("expected quoted --workspace in resume command, got: %s", got)
+		}
+	})
+
+	t.Run("no pack path omits the flag", func(t *testing.T) {
+		ctx := ctxWith("")
+		ctx.PackPath = ""
+		got := buildResumeCommand(ctx, "verify")
+		if strings.Contains(got, "--pack") {
+			t.Errorf("should not emit --pack when PackPath is empty, got: %s", got)
+		}
+		if !strings.HasSuffix(got, "--from verify") {
+			t.Errorf("fromPhase should terminate the command, got: %s", got)
+		}
+	})
+}
 
 func TestExtractVerdictReason(t *testing.T) {
 	cases := []struct {

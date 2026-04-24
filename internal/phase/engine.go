@@ -62,6 +62,72 @@ func extractVerdictReason(body []byte, verdict string, limit int) string {
 	return reason
 }
 
+// buildResumeCommand constructs the exact `wso2-se-agent fix …` command the
+// user can paste back into the shell to continue from `fromPhase`. It uses
+// the values already in PhaseContext — product, version, issue URL, pack
+// path — so we never print an ellipsis the user has to fill in.
+//
+// Values that may contain spaces (pack path, workspace path) are
+// shell-quoted; others are emitted bare since product/version/issue never
+// contain shell-special characters in practice.
+func buildResumeCommand(ctx *PhaseContext, fromPhase string) string {
+	parts := []string{
+		"wso2-se-agent fix",
+		"--product " + ctx.ProductConfig.Product,
+		"--version " + ctx.ProductConfig.Version,
+		"--issue " + ctx.IssueURL,
+	}
+	if ctx.PackPath != "" {
+		parts = append(parts, "--pack "+shellQuote(ctx.PackPath))
+	}
+	// Include --workspace only when it was set to a non-default path.
+	// Auto-derived workspaces reproduce from --product + --issue alone, so
+	// emitting --workspace in that case is noise; emitting it when the user
+	// explicitly overrode is load-bearing.
+	if ctx.Workspace != "" && ctx.Workspace != defaultWorkspacePath(ctx) {
+		parts = append(parts, "--workspace "+shellQuote(ctx.Workspace))
+	}
+	parts = append(parts, "--from "+fromPhase)
+	return strings.Join(parts, " ")
+}
+
+// defaultWorkspacePath mirrors the workspace-resolution logic in
+// internal/cmd/run.go. If we can't build it (nil config), we return "" so
+// the caller treats every Workspace value as explicit.
+func defaultWorkspacePath(ctx *PhaseContext) string {
+	if ctx.GlobalConfig == nil || ctx.ProductConfig == nil {
+		return ""
+	}
+	return filepath.Join(
+		ctx.GlobalConfig.WorkspaceRoot,
+		fmt.Sprintf("%s-issues-%s", ctx.ProductConfig.Product, ctx.IssueNumber),
+	)
+}
+
+// shellQuote wraps a value in single quotes when it contains any character
+// the shell would interpret (whitespace, glob chars, quotes, dollars, etc.).
+// Single quotes inside the value are handled by the `'…'\''…'` idiom.
+func shellQuote(s string) string {
+	if s == "" {
+		return "''"
+	}
+	// Simple whitelist — anything outside is quoted.
+	safe := true
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') ||
+			c == '/' || c == '.' || c == '_' || c == '-' || c == ':' || c == '=' || c == '+' || c == '@' || c == ',') {
+			safe = false
+			break
+		}
+	}
+	if safe {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
 type Engine struct {
 	registry *Registry
 }
@@ -184,7 +250,8 @@ func (e *Engine) Run(ctx *PhaseContext, phases []Phase) error {
 
 			if verdict != "GO" {
 				reason := extractVerdictReason(body, verdict, 500)
-				ctx.Printer.RiskGateBlocked(verdict, artifactPath, reason)
+				resumeCmd := buildResumeCommand(ctx, "fix")
+				ctx.Printer.RiskGateBlocked(verdict, artifactPath, reason, resumeCmd)
 				result.Status = state.StatusGated
 				ctx.State.Phases[p.Name()] = result
 				state.Save(ctx.Workspace, ctx.State)

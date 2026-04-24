@@ -191,7 +191,7 @@ phase_limits:
   reproduce: 5.0
 skills_repo: "Tharsanan1/wso2-se-agent-skills"
 skills_branch: "main"
-skills_ref: "api-manager-specific/v4"
+skills_ref: "api-manager-specific/v4/skills"
 `))
 
 	// Create a dummy pack file
@@ -327,7 +327,7 @@ phase_limits:
   reproduce: 5.0
 skills_repo: "Tharsanan1/wso2-se-agent-skills"
 skills_branch: "main"
-skills_ref: "api-manager-specific/v4"
+skills_ref: "api-manager-specific/v4/skills"
 `)
 
 	// Write pre/post scripts for static phases

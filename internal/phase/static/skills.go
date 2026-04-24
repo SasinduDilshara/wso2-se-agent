@@ -70,9 +70,12 @@ func (p *SkillsPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, erro
 		return result, fmt.Errorf("%s", result.Error)
 	}
 
+	// skills_ref is the direct path (relative to the skills repo) of the dir
+	// that holds the product skills — same convention as GenericSkillsRef on
+	// lines 50–54. Example: skills_ref: "skills" → <repo>/skills/.
 	skillsRef := ctx.ProductConfig.SkillsRef
 	srcDir := filepath.Join(productLocalPath, skillsRef)
-	srcSkillsDir := filepath.Join(srcDir, "skills")
+	srcSkillsDir := srcDir
 	if _, err := os.Stat(srcSkillsDir); err == nil {
 		if err := copyDir(srcSkillsDir, dstSkillsDir); err != nil {
 			result.Status = state.StatusFailed

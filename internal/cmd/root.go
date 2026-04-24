@@ -30,6 +30,7 @@ func init() {
 	rootCmd.AddCommand(setupReposCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(cleanCmd)
+	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 

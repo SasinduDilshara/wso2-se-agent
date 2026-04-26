@@ -26,7 +26,12 @@ func (p *PlanPhase) Preconditions(ctx *phase.PhaseContext) error {
 }
 
 func (p *PlanPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
-	prompt := fmt.Sprintf("/plan %s", ctx.IssueNumber)
+	// Pass the full URL (not just the number) so the agent knows which org/repo
+	// the issue lives in. With only the number, `gh issue view` has to guess
+	// the repo and burns turns trying every WSO2 org until it finds the right
+	// one — or never, on a private repo. The skill extracts the number from
+	// the URL when it needs it for filenames like `.ai/plan-<n>.md`.
+	prompt := fmt.Sprintf("/plan %s", ctx.IssueURL)
 	return p.runner.RunAIPhase(ctx, "plan", prompt, 0, nil)
 }
 

@@ -27,7 +27,10 @@ func (p *PRPhase) Preconditions(ctx *phase.PhaseContext) error {
 }
 
 func (p *PRPhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
-	prompt := fmt.Sprintf("/submit-fix %s", ctx.IssueNumber)
+	// Pass the full URL — same reason as PlanPhase: skills that hit `gh issue view`
+	// (e.g. to read the issue title for the PR description) need the org/repo
+	// from the URL, not just the number.
+	prompt := fmt.Sprintf("/submit-fix %s", ctx.IssueURL)
 	result, err := p.runner.RunAIPhase(ctx, "pr", prompt, 0, extractPRURL)
 	// Surface the PR URL on WorkspaceState.PRURL too so `status` can show it
 	// after the run. The engine doesn't do this automatically for pr (unlike

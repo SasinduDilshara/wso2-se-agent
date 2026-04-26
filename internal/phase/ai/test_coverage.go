@@ -26,7 +26,9 @@ func (p *TestCoveragePhase) Preconditions(ctx *phase.PhaseContext) error {
 }
 
 func (p *TestCoveragePhase) Execute(ctx *phase.PhaseContext) (*state.PhaseResult, error) {
-	prompt := fmt.Sprintf("/create-tests %s", ctx.IssueNumber)
+	// Pass the full URL — same reason as PlanPhase: skills that hit `gh issue view`
+	// need the org/repo from the URL, not just the number.
+	prompt := fmt.Sprintf("/create-tests %s", ctx.IssueURL)
 	return p.runner.RunAIPhase(ctx, "test-coverage", prompt, 0, nil)
 }
 

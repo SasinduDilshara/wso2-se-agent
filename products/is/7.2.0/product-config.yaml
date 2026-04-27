@@ -1,0 +1,30 @@
+product: is
+version: 7.2.0
+
+repos: []
+
+build:
+  pack_zip_pattern: "wso2is-*.zip"
+  pack_source: ""
+
+runtime:
+  startup_command: "sh wso2server.sh"
+  health_check_log: "WSO2 Carbon started"
+  default_ports: [9443, 9000, 9001]
+  startup_timeout_seconds: 120
+
+phase_limits:
+  reproduce: 10.0
+  plan: 5.0
+  risk-assessment: 2.0
+  fix: 15.0
+  verify: 10.0
+  test-coverage: 10.0
+  pr: 5.0
+
+skip_phases: []
+
+skills_repo: ""
+skills_branch: ""
+skills_ref: ""
+references_ref: ""

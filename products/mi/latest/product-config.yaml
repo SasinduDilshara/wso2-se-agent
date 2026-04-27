@@ -1,28 +1,31 @@
-product: apim
+product: mi
 version: latest
 
 repos:
-  - name: carbon-apimgt
-    upstream: wso2/carbon-apimgt
+  - name: product-micro-integrator
+    upstream: wso2/product-micro-integrator
     branch: master
-  - name: product-apim
-    upstream: wso2/product-apim
+  - name: wso2-synapse
+    upstream: wso2/wso2-synapse
     branch: master
-  - name: apim-apps
-    upstream: wso2/apim-apps
-    branch: main
-  - name: docs-apim
-    upstream: wso2/docs-apim
+  - name: carbon-mediation
+    upstream: wso2/carbon-mediation
+    branch: master
+  - name: carbon-data
+    upstream: wso2/carbon-data
+    branch: master
+  - name: product-mi-tooling
+    upstream: wso2/product-mi-tooling
     branch: master
 
 build:
-  pack_zip_pattern: "wso2am-*.zip"
+  pack_zip_pattern: "wso2mi-*.zip"
   pack_source: ""
 
 runtime:
-  startup_command: "sh api-manager.sh"
-  health_check_log: "Mgt Console URL"
-  default_ports: [9443, 9763, 8280, 8243, 5672]
+  startup_command: "sh micro-integrator.sh"
+  health_check_log: "WSO2 Micro Integrator started in"
+  default_ports: [8290, 8253, 9164, 9201]
   startup_timeout_seconds: 180
 
 phase_limits:
@@ -36,7 +39,7 @@ phase_limits:
 
 skip_phases: []
 
-skills_repo: "Tharsanan1/wso2-se-agent-skills"
+skills_repo: "SasinduDilshara/mi-skills-docs"
 skills_branch: "main"
 skills_ref: "skills"
-claude_md_url: "https://github.com/Tharsanan1/wso2-se-agent-skills/blob/main/api-manager-specific/v5/CLAUDE.md"
+claude_md_url: "https://github.com/SasinduDilshara/mi-skills-docs/blob/main/CLAUDE.md"

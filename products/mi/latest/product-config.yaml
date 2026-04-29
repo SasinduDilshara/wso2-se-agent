@@ -42,4 +42,5 @@ skip_phases: []
 skills_repo: "SasinduDilshara/mi-skills-docs"
 skills_branch: "main"
 skills_ref: "skills"
+references_ref: "product-docs"
 claude_md_url: "https://github.com/SasinduDilshara/mi-skills-docs/blob/main/CLAUDE.md"
